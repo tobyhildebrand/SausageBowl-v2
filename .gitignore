@@ -2,8 +2,9 @@
 /vendor/
 composer.lock
 
-# App config (contains secrets)
+# App config and secrets (both contain sensitive values, never commit)
 /config/config.php
+/config/secrets.php
 
 # Yahoo OAuth token cache (tokens live in the DB; this file should not exist)
 yahoo_oauth.json
@@ -14,6 +15,6 @@ Thumbs.db
 .idea/
 .vscode/
 
-# PHP error logs
+# PHP error logs and deployment logs
 *.log
 
