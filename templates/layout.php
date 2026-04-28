@@ -19,7 +19,7 @@
     </main>
 
     <footer class="site-footer">
-        <p>&copy; <?= date('Y') ?> Dynasty League</p>
+        <p>&copy; <?= date('Y') ?> Now it goes around the Sausage</p>
     </footer>
 </body>
 </html>
