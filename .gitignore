@@ -1,5 +1,19 @@
-__pycache__/
-*.pyc
-.venv/
-.env
+# Composer
+/vendor/
+composer.lock
+
+# App config (contains secrets)
+/config/config.php
+
+# Yahoo OAuth token cache (tokens live in the DB; this file should not exist)
 yahoo_oauth.json
+
+# OS / editor artifacts
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# PHP error logs
+*.log
+
