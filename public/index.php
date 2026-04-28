@@ -16,8 +16,10 @@ define('APP_ROOT', dirname(__DIR__));
 // Composer autoloader
 require APP_ROOT . '/vendor/autoload.php';
 
+use App\Core\YahooApiClient;
 use App\Core\YahooOAuthClient;
 use App\Helpers\View;
+use App\Services\RosterService;
 
 // Load app config (used for display values; DB connection is lazy via DB::get())
 $config = require APP_ROOT . '/config/config.php';
@@ -92,6 +94,18 @@ try {
                 'title'   => 'Yahoo Connected',
                 'appName' => $config['app']['name'],
                 'success' => true,
+            ]);
+            break;
+
+        case '/rosters':
+            $oauth = new YahooOAuthClient($config['yahoo']);
+            $apiClient = new YahooApiClient($oauth);
+            $rosterService = new RosterService($apiClient, $config['yahoo']['league_key']);
+            $teams = $rosterService->getAllRosters();
+            View::render('rosters', [
+                'title'   => 'Rosters',
+                'appName' => $config['app']['name'],
+                'teams'   => $teams,
             ]);
             break;
 

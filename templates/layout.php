@@ -11,6 +11,7 @@
         <a class="site-title" href="/index.php"><?= htmlspecialchars($appName ?? 'Dynasty League') ?></a>
         <nav class="site-nav">
             <a href="/index.php">Home</a>
+            <a href="/index.php?r=rosters">Rosters</a>
         </nav>
     </header>
 
