@@ -36,10 +36,23 @@ if ($config['app']['debug']) {
 
 // -------------------------------------------------------------------------
 // Basic front-controller routing.
-// As the app grows this can be extracted into a Router class.
+// Supports two modes:
+// 1) Clean URLs via rewrite       : /yahoo/connect
+// 2) No-rewrite fallback (Plesk)  : /index.php?r=yahoo/connect
 // -------------------------------------------------------------------------
-$uri = strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
-$uri = '/' . trim($uri, '/');
+$routeFromQuery = isset($_GET['r']) ? (string) $_GET['r'] : '';
+
+if ($routeFromQuery !== '') {
+    $uri = '/' . trim($routeFromQuery, '/');
+} else {
+    $uri = strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
+    $uri = '/' . trim($uri, '/');
+
+    // When the app is called as /index.php without rewrite, treat it as home.
+    if ($uri === '/index.php') {
+        $uri = '/';
+    }
+}
 
 try {
     switch ($uri) {

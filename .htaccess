@@ -1,0 +1,18 @@
+RewriteEngine On
+
+# Deny direct access to non-public project directories when repository is
+# deployed directly into /httpdocs.
+RewriteRule ^(config|src|templates|db|vendor)/ - [F,L,NC]
+RewriteRule (^|/)\.(git|svn|hg) - [F,L,NC]
+RewriteRule ^composer\.(json|lock)$ - [F,L,NC]
+
+# Expose assets stored in /public/assets under /assets.
+RewriteRule ^assets/(.*)$ public/assets/$1 [L]
+
+# Serve existing files/directories directly.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Route all remaining requests through root index.php.
+RewriteRule ^ index.php [QSA,L]

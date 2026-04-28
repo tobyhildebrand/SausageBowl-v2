@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($title ?? 'Dynasty League') ?> — <?= htmlspecialchars($appName ?? 'Dynasty League') ?></title>
-    <link rel="stylesheet" href="/assets/css/main.css">
+    <link rel="stylesheet" href="/public/assets/css/main.css">
 </head>
 <body>
     <header class="site-header">
-        <a class="site-title" href="/"><?= htmlspecialchars($appName ?? 'Dynasty League') ?></a>
+        <a class="site-title" href="/index.php"><?= htmlspecialchars($appName ?? 'Dynasty League') ?></a>
         <nav class="site-nav">
-            <a href="/">Home</a>
+            <a href="/index.php">Home</a>
         </nav>
     </header>
 
