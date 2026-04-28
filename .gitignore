@@ -2,8 +2,7 @@
 /vendor/
 composer.lock
 
-# App config and secrets (both contain sensitive values, never commit)
-/config/config.php
+# secrets.php contains credentials – never commit
 /config/secrets.php
 
 # Yahoo OAuth token cache (tokens live in the DB; this file should not exist)
