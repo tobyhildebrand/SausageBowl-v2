@@ -109,6 +109,15 @@ try {
             ]);
             break;
 
+        case '/debug/rosters-raw':
+            // Temporary debug route – remove before going public.
+            $oauth     = new YahooOAuthClient($config['yahoo']);
+            $apiClient = new YahooApiClient($oauth);
+            $raw = $apiClient->get("league/{$config['yahoo']['league_key']}/teams/roster/players");
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($raw, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+            exit;
+
         default:
             http_response_code(404);
             View::render('home', [
