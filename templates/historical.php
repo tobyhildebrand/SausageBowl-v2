@@ -367,6 +367,79 @@ foreach ($pointSeasons as $season) {
             Momentum and close-call conversion use seasons <?= (int) $insightLast3Seasons[0] ?> to <?= (int) $insightLast3Seasons[count($insightLast3Seasons) - 1] ?>.
         </p>
     <?php endif; ?>
+
+    <div class="insight-guide">
+        <p class="insight-guide__title">What do these metrics mean?</p>
+        <div class="insight-guide__grid">
+
+            <div class="insight-card">
+                <p class="insight-card__name">PEI &mdash; Placement Efficiency Index</p>
+                <p class="insight-card__tagline">Are you finishing where your points deserve?</p>
+                <p class="insight-card__body">
+                    Each season your total points are divided by your final rank. The average across all seasons is your PEI.
+                    A higher number means you consistently score big <em>and</em> finish high &mdash; the ideal combination.
+                </p>
+                <p class="insight-card__example">
+                    Example: 1 500 pts, 3rd place &rarr; 500. Next season 1 400 pts, 1st place &rarr; 1 400. PEI = 950. A team finishing 1st with fewer points beats one finishing 3rd with more.
+                </p>
+            </div>
+
+            <div class="insight-card">
+                <p class="insight-card__name">Luck Gap</p>
+                <p class="insight-card__tagline">Did fortune favour you &mdash; or were you robbed?</p>
+                <p class="insight-card__body">
+                    Every week your score is compared to every other team. That produces a &ldquo;points rank&rdquo; independent of your actual W&ndash;L record.
+                    Luck Gap = points rank &minus; final rank. <span class="insight-positive">Positive</span> = you finished better than your scoring deserved (lucky schedule).
+                    <span class="insight-negative">Negative</span> = you outscored most teams but still finished lower (unlucky matchups).
+                </p>
+                <p class="insight-card__example">
+                    Example: You ranked 3rd in points but finished 6th &rarr; Luck Gap &minus;3 (unlucky). You ranked 8th in points but finished 4th &rarr; Luck Gap +4 (lucky).
+                </p>
+            </div>
+
+            <div class="insight-card">
+                <p class="insight-card__name">Momentum</p>
+                <p class="insight-card__tagline">Are you on the rise or fading?</p>
+                <p class="insight-card__body">
+                    A weighted form score across the last three finished seasons. Recent seasons count far more than older ones
+                    (60&nbsp;% this year, 30&nbsp;% last year, 10&nbsp;% the year before). Both your rank and your points output feed into the score.
+                    Higher is better.
+                </p>
+                <p class="insight-card__example">
+                    Example: Finishing 2nd &rarr; 8th &rarr; 1st puts heavy weight on that 1st place &mdash; high Momentum.
+                    Finishing 1st &rarr; 1st &rarr; 10th drags the score down sharply despite the good history.
+                </p>
+            </div>
+
+            <div class="insight-card">
+                <p class="insight-card__name">Volatility</p>
+                <p class="insight-card__tagline">Consistent contender or a wildcard?</p>
+                <p class="insight-card__body">
+                    The standard deviation of your season-end ranks across all completed seasons.
+                    A <strong>low</strong> number means you reliably land in the same range every year.
+                    A <strong>high</strong> number means your finish is hard to predict &mdash; feast or famine.
+                </p>
+                <p class="insight-card__example">
+                    Example: Finishing 2nd, 3rd, 2nd, 1st &rarr; Volatility &asymp;&nbsp;0.8 (rock solid).
+                    Finishing 1st, 9th, 2nd, 8th &rarr; Volatility &asymp;&nbsp;3.9 (unpredictable).
+                </p>
+            </div>
+
+            <div class="insight-card">
+                <p class="insight-card__name">Close-Call Conversion</p>
+                <p class="insight-card__tagline">Do you win the tight ones?</p>
+                <p class="insight-card__body">
+                    Of all your matchups decided by <?= htmlspecialchars((string) $formatPoints($closeMargin)) ?>&nbsp;points or fewer, what percentage did you win?
+                    These nail-biting games are largely down to last-minute lineup calls and a bit of luck.
+                    A high rate suggests you tend to come out on top when it matters most.
+                </p>
+                <p class="insight-card__example">
+                    Example: 7 close games, 5 wins &rarr; 71&nbsp;%. The sample (shown in brackets) tells you how reliable the stat is &mdash; treat a 2/2 very differently from a 10/14.
+                </p>
+            </div>
+
+        </div>
+    </div>
 </div>
 
 <script>

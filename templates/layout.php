@@ -56,6 +56,7 @@ $isHistoryActive = $currentRoute === '/history';
 
     <footer class="site-footer">
         <p>&copy; <?= date('Y') ?> Now it goes around the Sausage</p>
+        <p class="site-footer__attribution">League data sourced from <a href="https://sports.yahoo.com/fantasy/" target="_blank" rel="noopener noreferrer">Yahoo Fantasy Sports</a>.</p>
     </footer>
 </body>
 </html>

@@ -152,6 +152,75 @@ a:hover {
     color: var(--ink-soft);
 }
 
+.site-footer__attribution {
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    opacity: 0.75;
+}
+
+.site-footer__attribution a {
+    color: inherit;
+    text-decoration: underline;
+}
+
+/* ============================================================
+   Insight guide (metric explainer below insights table)
+   ============================================================ */
+.insight-guide {
+    margin-top: 2rem;
+    border-top: 1px solid var(--brand-line);
+    padding-top: 1.5rem;
+}
+
+.insight-guide__title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 1rem;
+}
+
+.insight-guide__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.insight-card {
+    background: var(--surface-2);
+    border: 1px solid var(--brand-line);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+}
+
+.insight-card__name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+}
+
+.insight-card__tagline {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    margin-bottom: 0.6rem;
+}
+
+.insight-card__body {
+    font-size: 0.85rem;
+    line-height: 1.55;
+}
+
+.insight-card__example {
+    margin-top: 0.5rem;
+    padding: 0.4rem 0.65rem;
+    background: var(--surface-1, #fff);
+    border-left: 3px solid var(--brand-accent, #c0aa4e);
+    border-radius: 0 4px 4px 0;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+}
+
 /* ============================================================
    Home page
    ============================================================ */
