@@ -241,6 +241,11 @@ class RosterService
 
         $teamKey  = $flat['team_key']  ?? '';
         $teamName = $flat['name']      ?? 'Unknown Team';
+        $teamLogo = '';
+
+        if (isset($flat['team_logos'][0]['team_logo']['url']) && is_string($flat['team_logos'][0]['team_logo']['url'])) {
+            $teamLogo = $flat['team_logos'][0]['team_logo']['url'];
+        }
 
         // Managers are nested inside 'managers' → [0] → 'manager' → nickname.
         $managers = [];
@@ -276,6 +281,7 @@ class RosterService
         return [
             'key'      => $teamKey,
             'name'     => $teamName,
+            'logo_url' => $teamLogo,
             'managers' => $managers,
             'players'  => $players,
         ];

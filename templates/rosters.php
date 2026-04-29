@@ -67,7 +67,18 @@
 <?php foreach ($teams as $teamIndex => $team): ?>
     <div class="roster-card">
         <div class="roster-card__header">
-            <span class="roster-card__team"><?= htmlspecialchars($team['name']) ?></span>
+            <div class="roster-card__title-row">
+                <?php if (!empty($team['logo_url'])): ?>
+                    <img
+                        class="roster-card__team-logo"
+                        src="<?= htmlspecialchars($team['logo_url']) ?>"
+                        alt="<?= htmlspecialchars($team['name']) ?> logo"
+                        loading="lazy"
+                        decoding="async"
+                    >
+                <?php endif; ?>
+                <span class="roster-card__team"><?= htmlspecialchars($team['name']) ?></span>
+            </div>
         </div>
 
         <?php foreach ($displayPositions as $position): ?>
