@@ -469,7 +469,7 @@ a:hover {
 .draft-board-table--matrix {
     width: 100%;
     table-layout: fixed;
-    font-size: 0.82rem;
+    font-size: 0.86rem;
 }
 
 .draft-board-table--matrix th,
@@ -514,7 +514,7 @@ a:hover {
 }
 
 .draft-board-table--matrix .draft-cell--changed .draft-cell-owner {
-    font-weight: 700;
+    font-weight: 600;
     overflow: visible;
     text-overflow: clip;
     white-space: normal;
@@ -530,9 +530,11 @@ a:hover {
 .draft-picked-player {
     display: block;
     margin-top: 0.12rem;
-    font-size: 0.68rem;
+    font-size: 0.76rem;
+    font-weight: 500;
+    line-height: 1.25;
     font-style: normal;
-    color: #2c3e50;
+    color: #233241;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -574,7 +576,7 @@ a:hover {
 
 @media (max-width: 1100px) {
     .draft-board-table--matrix {
-        font-size: 0.78rem;
+        font-size: 0.82rem;
     }
 
     .draft-board-table--matrix th,
@@ -588,7 +590,7 @@ a:hover {
 }
 
 .draft-cell--changed {
-    font-weight: 700;
+    font-weight: 500;
     background: #fff4dc;
 }
 
