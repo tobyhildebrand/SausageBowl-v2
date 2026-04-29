@@ -98,7 +98,7 @@ foreach ($seasons as $season) {
                     <td class="history-place" data-sort-value="<?= $place ?? 99 ?>">
                         <?php if ($place !== null): ?>
                             <span class="history-place__content">
-                                <span class="history-place__value\"><?= (int) $place ?></span>
+                                <span class="history-place__value"><?= (int) $place ?></span>
                                 <span class="history-place__medal<?= $medal === '' ? ' is-empty' : '' ?>" aria-hidden="true">
                                     <?= $medal !== '' ? $medal : '•' ?>
                                 </span>

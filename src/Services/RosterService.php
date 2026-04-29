@@ -34,6 +34,8 @@ use RuntimeException;
  */
 class RosterService
 {
+    private const EXCLUDED_TEAM_NAME_PARTS = ['mordlustig'];
+
     // Position display order for roster cards.
     public const POSITION_ORDER = ['QB', 'WR', 'RB', 'TE', 'K', 'DEF', 'BN', 'IR'];
 
@@ -163,6 +165,10 @@ class RosterService
 
             $team = $this->parseTeam($teamData);
             if ($team !== null) {
+                if ($this->isExcludedTeamName((string) ($team['name'] ?? ''))) {
+                    continue;
+                }
+
                 $teams[] = $team;
             }
         }
@@ -331,5 +337,18 @@ class RosterService
             'selected_position' => $selectedPosition,
             'status'            => $status,
         ];
+    }
+
+    private function isExcludedTeamName(string $teamName): bool
+    {
+        $normalized = strtolower($teamName);
+
+        foreach (self::EXCLUDED_TEAM_NAME_PARTS as $part) {
+            if ($part !== '' && strpos($normalized, $part) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

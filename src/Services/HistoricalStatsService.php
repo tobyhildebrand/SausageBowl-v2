@@ -10,6 +10,8 @@ use Throwable;
 
 class HistoricalStatsService
 {
+    private const EXCLUDED_TEAM_NAME_PARTS = ['mordlustig'];
+
     private YahooApiClient $api;
     private string $currentLeagueKey;
     private int $startSeason;
@@ -51,6 +53,34 @@ class HistoricalStatsService
         }
 
         usort($leagues, static fn(array $a, array $b): int => $a['season'] <=> $b['season']);
+
+        $latestSeasonInChain = 0;
+        foreach ($leagues as $league) {
+            $latestSeasonInChain = max($latestSeasonInChain, (int) ($league['season'] ?? 0));
+        }
+
+        // Historical view should include only fully finished seasons.
+        // Prefer Yahoo's is_finished flag and fall back to excluding the latest season.
+        $finishedLeagues = [];
+        foreach ($leagues as $league) {
+            $season = (int) ($league['season'] ?? 0);
+            $isFinished = (bool) ($league['is_finished'] ?? false);
+
+            if ($isFinished || $season < $latestSeasonInChain) {
+                $finishedLeagues[] = $league;
+            }
+        }
+
+        if ($finishedLeagues === []) {
+            return [
+                'seasons' => [],
+                'last3_seasons' => [],
+                'season_states' => [],
+                'rows' => [],
+            ];
+        }
+
+        $leagues = $finishedLeagues;
         $seasons = array_values(array_map(static fn(array $l): int => (int) $l['season'], $leagues));
 
         $rowsById = [];
@@ -161,7 +191,7 @@ class HistoricalStatsService
         ];
     }
 
-    /** @return array<int, array{league_key: string, season: int, num_teams: int}> */
+    /** @return array<int, array{league_key: string, season: int, num_teams: int, is_finished: bool}> */
     private function collectLeagueChain(): array
     {
         $chain = [];
@@ -188,6 +218,7 @@ class HistoricalStatsService
                     'league_key' => (string) ($meta['league_key'] ?? $key),
                     'season' => $season,
                     'num_teams' => (int) ($meta['num_teams'] ?? 0),
+                    'is_finished' => (bool) ($meta['is_finished'] ?? false),
                 ];
             }
 
@@ -220,7 +251,27 @@ class HistoricalStatsService
             'season' => (string) ($meta['season'] ?? ''),
             'renew' => (string) ($meta['renew'] ?? ''),
             'num_teams' => (int) ($meta['num_teams'] ?? 0),
+            'is_finished' => $this->toBool($meta['is_finished'] ?? false),
         ];
+    }
+
+    /** @param mixed $value */
+    private function toBool($value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_int($value)) {
+            return $value !== 0;
+        }
+
+        if (is_string($value)) {
+            $normalized = strtolower(trim($value));
+            return in_array($normalized, ['1', 'true', 'yes', 'y'], true);
+        }
+
+        return false;
     }
 
     private function buildRenewedLeagueKey(string $renewValue): ?string
@@ -282,6 +333,10 @@ class HistoricalStatsService
             $flat = $this->flattenMeta($meta);
 
             $name = (string) ($flat['name'] ?? 'Unknown Team');
+            if ($this->isExcludedTeamName($name)) {
+                continue;
+            }
+
             $logoUrl = '';
             if (isset($flat['team_logos'][0]['team_logo']['url']) && is_string($flat['team_logos'][0]['team_logo']['url'])) {
                 $logoUrl = $flat['team_logos'][0]['team_logo']['url'];
@@ -363,5 +418,18 @@ class HistoricalStatsService
     private function normalizeName(string $name): string
     {
         return strtolower(trim(preg_replace('/\s+/', ' ', $name) ?? $name));
+    }
+
+    private function isExcludedTeamName(string $teamName): bool
+    {
+        $normalized = strtolower($teamName);
+
+        foreach (self::EXCLUDED_TEAM_NAME_PARTS as $part) {
+            if ($part !== '' && strpos($normalized, $part) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
