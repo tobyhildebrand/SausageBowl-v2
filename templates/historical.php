@@ -9,8 +9,12 @@ $pointRows = $points['rows'] ?? [];
 $pointLast3Seasons = $points['last3_seasons'] ?? [];
 $pointSeasonStates = $points['season_states'] ?? [];
 
+$insightRows = $insights['rows'] ?? [];
+$insightLast3Seasons = $insights['last3_seasons'] ?? [];
+$closeMargin = (float) ($insights['close_margin'] ?? 10.0);
+
 $tabFromQuery = strtolower((string) ($_GET['tab'] ?? 'placings'));
-$activeTab = in_array($tabFromQuery, ['placings', 'points'], true) ? $tabFromQuery : 'placings';
+$activeTab = in_array($tabFromQuery, ['placings', 'points', 'insights'], true) ? $tabFromQuery : 'placings';
 
 $formatAverage = static function (?float $value): string {
     if ($value === null) {
@@ -26,6 +30,15 @@ $formatPoints = static function (?float $value): string {
     }
 
     return number_format($value, 1, '.', '');
+};
+
+$formatSigned = static function (?float $value, int $decimals = 2): string {
+    if ($value === null) {
+        return '—';
+    }
+
+    $formatted = number_format($value, $decimals, '.', '');
+    return $value > 0 ? '+' . $formatted : $formatted;
 };
 
 $medalForPlace = static function (?int $place): string {
@@ -68,7 +81,7 @@ foreach ($pointSeasons as $season) {
 </section>
 
 <p class="history-subtitle">
-    Head-to-head era since 2018. Toggle between placings and points, then click any column header to sort.
+    Head-to-head era since 2018. Toggle between placings, points, and insights, then click any column header to sort.
 </p>
 
 <div class="history-tabs" role="tablist" aria-label="Historical data view switch">
@@ -93,6 +106,17 @@ foreach ($pointSeasons as $season) {
         aria-selected="<?= $activeTab === 'points' ? 'true' : 'false' ?>"
     >
         Points
+    </button>
+    <button
+        type="button"
+        class="history-tab<?= $activeTab === 'insights' ? ' is-active' : '' ?>"
+        id="history-tab-insights"
+        data-tab="insights"
+        role="tab"
+        aria-controls="history-pane-insights"
+        aria-selected="<?= $activeTab === 'insights' ? 'true' : 'false' ?>"
+    >
+        Insights
     </button>
 </div>
 
@@ -269,6 +293,78 @@ foreach ($pointSeasons as $season) {
     <?php if ($pointLast3Seasons !== []): ?>
         <p class="history-footnote">
             L3Y uses seasons <?= (int) $pointLast3Seasons[0] ?> to <?= (int) $pointLast3Seasons[count($pointLast3Seasons) - 1] ?>.
+        </p>
+    <?php endif; ?>
+</div>
+
+<div class="history-pane<?= $activeTab === 'insights' ? ' is-active' : '' ?>" id="history-pane-insights" role="tabpanel" aria-labelledby="history-tab-insights"<?= $activeTab === 'insights' ? '' : ' hidden' ?>>
+    <div class="history-state history-state--info">
+        <strong>How to read:</strong>
+        PEI = points/rank efficiency, Luck Gap = points rank minus final rank, Momentum = weighted L3Y form, Volatility = rank standard deviation, Close-Call = wins in games decided by <?= htmlspecialchars((string) $formatPoints($closeMargin)) ?> points or less.
+    </div>
+
+    <div class="history-table-wrap">
+        <table class="history-table js-sortable-table" id="historyInsightsTable">
+            <thead>
+            <tr>
+                <th data-sort="team" data-type="string">Team</th>
+                <th data-sort="pei" data-type="number" title="Placement Efficiency Index = average(points/rank)">PEI</th>
+                <th data-sort="luck" data-type="number" title="Average points-rank minus final-rank. Positive means outperforming points profile.">Luck Gap</th>
+                <th data-sort="momentum" data-type="number" title="Weighted form score over the last 3 finished seasons.">Momentum</th>
+                <th data-sort="volatility" data-type="number" title="Standard deviation of season ranks. Lower means steadier.">Volatility</th>
+                <th data-sort="close-rate" data-type="number" title="Close-call win rate in games decided by <?= htmlspecialchars((string) $formatPoints($closeMargin)) ?> points or less.">Close-Call Conv.</th>
+            </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($insightRows as $row): ?>
+                <?php
+                    $pei = isset($row['placement_efficiency']) ? (float) $row['placement_efficiency'] : null;
+                    $luck = isset($row['luck_gap']) ? (float) $row['luck_gap'] : null;
+                    $momentum = isset($row['momentum']) ? (float) $row['momentum'] : null;
+                    $volatility = isset($row['volatility']) ? (float) $row['volatility'] : null;
+                    $closeRate = isset($row['close_call_rate']) ? (float) $row['close_call_rate'] : null;
+                    $closeWins = (int) ($row['close_call_wins'] ?? 0);
+                    $closeGames = (int) ($row['close_call_games'] ?? 0);
+                ?>
+                <tr>
+                    <td class="history-team" data-sort-value="<?= htmlspecialchars(strtolower((string) $row['team_name'])) ?>">
+                        <?php if (!empty($row['logo_url'])): ?>
+                            <img class="history-team__logo" src="<?= htmlspecialchars((string) $row['logo_url']) ?>" alt="<?= htmlspecialchars((string) $row['team_name']) ?> logo" loading="lazy" decoding="async">
+                        <?php endif; ?>
+                        <span><?= htmlspecialchars((string) $row['team_name']) ?></span>
+                    </td>
+
+                    <td class="history-place history-place--points" data-sort-value="<?= $pei ?? -1 ?>">
+                        <?= htmlspecialchars($formatPoints($pei)) ?>
+                    </td>
+                    <td class="history-place history-place--points" data-sort-value="<?= $luck ?? -999 ?>">
+                        <span class="<?= $luck !== null && $luck > 0 ? 'insight-positive' : ($luck !== null && $luck < 0 ? 'insight-negative' : '') ?>">
+                            <?= htmlspecialchars($formatSigned($luck, 2)) ?>
+                        </span>
+                    </td>
+                    <td class="history-place history-place--points" data-sort-value="<?= $momentum ?? -1 ?>">
+                        <?= htmlspecialchars($formatPoints($momentum)) ?>
+                    </td>
+                    <td class="history-place history-place--points" data-sort-value="<?= $volatility ?? 999 ?>">
+                        <?= htmlspecialchars($formatSigned($volatility, 2)) ?>
+                    </td>
+                    <td class="history-place history-place--points" data-sort-value="<?= $closeRate ?? -1 ?>">
+                        <?php if ($closeRate !== null): ?>
+                            <strong><?= htmlspecialchars($formatPoints($closeRate)) ?>%</strong>
+                            <span class="insight-sub">(<?= (int) $closeWins ?>/<?= (int) $closeGames ?>)</span>
+                        <?php else: ?>
+                            <span class="history-place__empty">—</span>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <?php if ($insightLast3Seasons !== []): ?>
+        <p class="history-footnote">
+            Momentum and close-call conversion use seasons <?= (int) $insightLast3Seasons[0] ?> to <?= (int) $insightLast3Seasons[count($insightLast3Seasons) - 1] ?>.
         </p>
     <?php endif; ?>
 </div>

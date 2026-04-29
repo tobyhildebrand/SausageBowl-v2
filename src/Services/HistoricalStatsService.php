@@ -10,7 +10,7 @@ use Throwable;
 
 class HistoricalStatsService
 {
-    private const EXCLUDED_TEAM_NAME_PARTS = ['mordlustig'];
+    private const EXCLUDED_TEAM_NAME_PARTS = ['mordlustig', 'tru. crew', 'tru crew'];
 
     private YahooApiClient $api;
     private string $currentLeagueKey;

@@ -476,6 +476,12 @@ a:hover {
     color: var(--warn-ink);
 }
 
+.history-state--info {
+    border: 1px solid #8eb9aa;
+    background: #edf7f3;
+    color: #1f4f42;
+}
+
 .history-state ul {
     margin: 0.35rem 0 0 1rem;
 }
@@ -565,6 +571,22 @@ a:hover {
 
 .history-points__value {
     font-weight: 600;
+}
+
+.insight-positive {
+    color: #166534;
+    font-weight: 700;
+}
+
+.insight-negative {
+    color: #b42318;
+    font-weight: 700;
+}
+
+.insight-sub {
+    color: #64748b;
+    font-size: 0.78rem;
+    margin-left: 0.25rem;
 }
 
 .history-place__content {

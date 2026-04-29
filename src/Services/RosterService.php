@@ -34,7 +34,7 @@ use RuntimeException;
  */
 class RosterService
 {
-    private const EXCLUDED_TEAM_NAME_PARTS = ['mordlustig'];
+    private const EXCLUDED_TEAM_NAME_PARTS = ['mordlustig', 'tru. crew', 'tru crew'];
 
     // Position display order for roster cards.
     public const POSITION_ORDER = ['QB', 'WR', 'RB', 'TE', 'K', 'DEF', 'BN', 'IR'];

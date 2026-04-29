@@ -19,6 +19,7 @@ require APP_ROOT . '/vendor/autoload.php';
 use App\Core\YahooApiClient;
 use App\Core\YahooOAuthClient;
 use App\Helpers\View;
+use App\Services\HistoricalInsightsService;
 use App\Services\HistoricalPointsService;
 use App\Services\HistoricalStatsService;
 use App\Services\RosterService;
@@ -117,14 +118,17 @@ try {
             $apiClient = new YahooApiClient($oauth);
             $historyService = new HistoricalStatsService($apiClient, $config['yahoo']['league_key'], 2018);
             $pointsService = new HistoricalPointsService($apiClient, $config['yahoo']['league_key'], 2018);
+            $insightsService = new HistoricalInsightsService($apiClient, $config['yahoo']['league_key'], 2018, 10.0);
             $history = $historyService->getHistoricalStandings();
             $points = $pointsService->getHistoricalPoints();
+            $insights = $insightsService->getInsights($history, $points);
 
             View::render('historical', [
                 'title'   => 'Historical Stats',
                 'appName' => $config['app']['name'],
                 'history' => $history,
                 'points'  => $points,
+                'insights' => $insights,
             ]);
             break;
 
