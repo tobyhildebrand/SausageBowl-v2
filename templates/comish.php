@@ -78,7 +78,7 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
     </form>
 
     <?php if ($wizardStep === 1): ?>
-        <form method="post" action="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=1" class="auth-form card--spaced">
+        <form method="post" action="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=1" class="auth-form card--spaced" id="draft-setup-form">
             <input type="hidden" name="action" value="save_upcoming_setup">
             <input type="hidden" name="season_year" value="<?= (int) $seasonYear ?>">
 
@@ -109,7 +109,7 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
                                         <input type="hidden" name="team_name[]" value="<?= htmlspecialchars((string) $teamName) ?>">
                                     </td>
                                     <td>
-                                        <select class="auth-field__input" name="slot_no[]" required>
+                                        <select class="auth-field__input js-slot-select" name="slot_no[]" required>
                                             <option value="">Choose pick</option>
                                             <?php foreach ($pickOptions as $pickNo): ?>
                                                 <option value="<?= (int) $pickNo ?>"<?= $selectedSlot === (int) $pickNo ? ' selected' : '' ?>>#<?= (int) $pickNo ?></option>
@@ -120,6 +120,7 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
                             <?php endforeach; ?>
                             </tbody>
                         </table>
+                        <p class="draft-setup-guard" id="draft-setup-guard" role="status" aria-live="polite"></p>
                     </div>
                 <?php endif; ?>
             </div>
@@ -276,6 +277,102 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
         </div>
     <?php endif; ?>
 </section>
+
+<?php if ($wizardStep === 1 && $leagueTeamNames !== []): ?>
+    <script>
+        (function () {
+            var form = document.getElementById('draft-setup-form');
+            if (!form) {
+                return;
+            }
+
+            var selects = Array.prototype.slice.call(form.querySelectorAll('.js-slot-select'));
+            var guard = document.getElementById('draft-setup-guard');
+            var saveButton = form.querySelector('button[type="submit"]');
+
+            function renderState(message, state) {
+                if (!guard) {
+                    return;
+                }
+                guard.textContent = message;
+                guard.classList.remove('is-error', 'is-ok', 'is-warn');
+                guard.classList.add(state);
+            }
+
+            function validateAssignments() {
+                var seen = Object.create(null);
+                var duplicates = Object.create(null);
+                var missingCount = 0;
+
+                selects.forEach(function (select) {
+                    var value = String(select.value || '').trim();
+                    select.classList.remove('draft-assignment-select--duplicate');
+
+                    if (value === '') {
+                        missingCount += 1;
+                        return;
+                    }
+
+                    if (seen[value]) {
+                        duplicates[value] = true;
+                    }
+                    seen[value] = true;
+                });
+
+                var duplicateList = Object.keys(duplicates).sort(function (a, b) {
+                    return Number(a) - Number(b);
+                });
+
+                if (duplicateList.length > 0) {
+                    selects.forEach(function (select) {
+                        var value = String(select.value || '').trim();
+                        if (value !== '' && duplicates[value]) {
+                            select.classList.add('draft-assignment-select--duplicate');
+                        }
+                    });
+
+                    if (saveButton) {
+                        saveButton.disabled = true;
+                    }
+                    renderState(
+                        'Duplicate pick numbers detected: #' + duplicateList.join(', #') + '. Each team must have a unique pick number.',
+                        'is-error'
+                    );
+                    return false;
+                }
+
+                if (missingCount > 0) {
+                    if (saveButton) {
+                        saveButton.disabled = true;
+                    }
+                    renderState(
+                        'Pick numbers are missing for ' + missingCount + ' team' + (missingCount === 1 ? '' : 's') + '.',
+                        'is-warn'
+                    );
+                    return false;
+                }
+
+                if (saveButton) {
+                    saveButton.disabled = false;
+                }
+                renderState('Order looks valid. Ready to save.', 'is-ok');
+                return true;
+            }
+
+            selects.forEach(function (select) {
+                select.addEventListener('change', validateAssignments);
+            });
+
+            form.addEventListener('submit', function (event) {
+                if (!validateAssignments()) {
+                    event.preventDefault();
+                }
+            });
+
+            validateAssignments();
+        })();
+    </script>
+<?php endif; ?>
 
 <section class="card card--spaced">
     <h2>Future Draft Pick Trades (<?= (int) ($seasonYear + 1) ?>+)</h2>

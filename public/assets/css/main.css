@@ -418,6 +418,30 @@ a:hover {
     gap: 1rem;
 }
 
+.draft-setup-guard {
+    margin-top: 0.7rem;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+
+.draft-setup-guard.is-error {
+    color: #9f1239;
+}
+
+.draft-setup-guard.is-warn {
+    color: #92400e;
+}
+
+.draft-setup-guard.is-ok {
+    color: #166534;
+}
+
+.draft-assignment-select--duplicate {
+    border-color: #dc2626;
+    background: #fff1f2;
+}
+
 .draft-order-text {
     min-height: 180px;
     resize: vertical;
@@ -504,6 +528,13 @@ a:hover {
 
 .btn--secondary:hover {
     background: rgba(255, 255, 255, 0.55);
+}
+
+.btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
 }
 
 /* ============================================================
