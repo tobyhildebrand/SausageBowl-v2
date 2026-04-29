@@ -11,6 +11,35 @@ use RuntimeException;
 
 class DraftDeskService
 {
+    public function getUpcomingSeasonYearReference(int $referenceYear): ?int
+    {
+        $pdo = DB::get();
+
+        $nextStmt = $pdo->prepare(
+            'SELECT season_year
+             FROM draft_upcoming_settings
+             WHERE season_year >= :reference
+             ORDER BY season_year ASC
+             LIMIT 1'
+        );
+        $nextStmt->execute([':reference' => $referenceYear]);
+        $nextSeason = $nextStmt->fetchColumn();
+
+        if ($nextSeason !== false) {
+            return (int) $nextSeason;
+        }
+
+        $latestStmt = $pdo->query(
+            'SELECT season_year
+             FROM draft_upcoming_settings
+             ORDER BY season_year DESC
+             LIMIT 1'
+        );
+        $latestSeason = $latestStmt !== false ? $latestStmt->fetchColumn() : false;
+
+        return $latestSeason === false ? null : (int) $latestSeason;
+    }
+
     public function getUpcomingSeasonData(int $seasonYear): array
     {
         $pdo = DB::get();

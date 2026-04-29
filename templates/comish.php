@@ -240,7 +240,7 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
             <?php if ($boardRows === []): ?>
                 <p class="home-note">No default order configured for <?= (int) $seasonYear ?> yet. Complete step 1 first.</p>
             <?php else: ?>
-                <table class="history-table draft-board-table">
+                <table class="history-table draft-board-table draft-board-table--matrix">
                     <thead>
                     <tr>
                         <th>Slot</th>
@@ -259,8 +259,9 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
                                 <?php $cell = $row['rounds'][$round] ?? null; ?>
                                 <td class="<?= !empty($cell['is_changed']) ? 'draft-cell--changed' : 'draft-cell--default' ?>">
                                     <?= htmlspecialchars((string) ($cell['owner'] ?? '')) ?>
-                                    <?php if (!empty($cell['is_changed']) && !empty($cell['note'])): ?>
-                                        <span class="insight-sub" title="<?= htmlspecialchars((string) $cell['note']) ?>">(trade)</span>
+                                    <?php if (!empty($cell['is_changed'])): ?>
+                                        <?php $tradeNote = trim((string) ($cell['note'] ?? '')); ?>
+                                        <span class="insight-sub" title="<?= htmlspecialchars($tradeNote !== '' ? $tradeNote : 'Traded pick') ?>">(trade)</span>
                                     <?php endif; ?>
                                 </td>
                             <?php endforeach; ?>
@@ -440,7 +441,7 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
                 <tr>
                     <th>Season</th>
                     <th>Round</th>
-                    <th>From Team</th>
+                    <th>Pick Originally Owned By</th>
                     <th>Current Owner</th>
                     <th>Note</th>
                     <th>Logged At</th>

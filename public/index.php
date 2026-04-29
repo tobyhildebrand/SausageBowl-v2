@@ -200,11 +200,26 @@ try {
                 $seasonYear = (int) date('Y');
             }
 
-            $upcoming = $draftDesk->getUpcomingSeasonData($seasonYear);
+            $upcomingSeasonYear = $draftDesk->getUpcomingSeasonYearReference((int) date('Y'));
+            $viewMode = 'none';
+            $upcoming = [];
+            $futureTrades = [];
+
+            if ($upcomingSeasonYear !== null && $seasonYear === $upcomingSeasonYear) {
+                $viewMode = 'board';
+                $upcoming = $draftDesk->getUpcomingSeasonData($seasonYear);
+            } elseif ($upcomingSeasonYear !== null && $seasonYear > $upcomingSeasonYear) {
+                $viewMode = 'future_trades';
+                $futureTrades = $draftDesk->listFutureTrades($seasonYear);
+            }
+
             $render('draft_board', [
                 'title' => 'Draft Board',
                 'seasonYear' => $seasonYear,
+                'upcomingSeasonYear' => $upcomingSeasonYear,
+                'viewMode' => $viewMode,
                 'draftUpcoming' => $upcoming,
+                'futureTrades' => $futureTrades,
             ]);
             break;
 

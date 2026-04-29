@@ -466,6 +466,48 @@ a:hover {
     white-space: nowrap;
 }
 
+.draft-board-table--matrix {
+    width: 100%;
+    table-layout: fixed;
+    font-size: 0.82rem;
+}
+
+.draft-board-table--matrix th,
+.draft-board-table--matrix td {
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.25;
+    padding: 0.46rem 0.38rem;
+}
+
+.draft-board-table--matrix th:first-child,
+.draft-board-table--matrix td:first-child {
+    width: 5.5%;
+    text-align: center;
+}
+
+.draft-board-table--matrix th:nth-child(2),
+.draft-board-table--matrix td:nth-child(2) {
+    width: 16%;
+}
+
+.draft-board-table--matrix .insight-sub {
+    display: inline;
+    font-size: 0.72rem;
+}
+
+@media (max-width: 1100px) {
+    .draft-board-table--matrix {
+        font-size: 0.78rem;
+    }
+
+    .draft-board-table--matrix th,
+    .draft-board-table--matrix td {
+        padding: 0.42rem 0.32rem;
+    }
+}
+
 .draft-cell--default {
     color: var(--ink-soft);
 }
