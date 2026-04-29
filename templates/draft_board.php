@@ -53,19 +53,24 @@ $roundRange = range(1, max(1, $roundCount));
                     <tbody>
                     <?php foreach ($boardRows as $row): ?>
                         <tr>
-                            <td><?= (int) ($row['slot_no'] ?? 0) ?></td>
+                            <?php $slotNo = (int) ($row['slot_no'] ?? 0); ?>
+                            <td><?= $slotNo ?></td>
                             <?php $defaultTeam = (string) ($row['default_team'] ?? ''); ?>
-                            <td><span class="draft-cell-owner" title="<?= htmlspecialchars($defaultTeam) ?>"><?= htmlspecialchars($defaultTeam) ?></span></td>
+                            <td><span class="draft-cell-owner"><?= htmlspecialchars($defaultTeam) ?></span></td>
                             <?php foreach ($roundRange as $round): ?>
                                 <?php $cell = $row['rounds'][$round] ?? null; ?>
                                 <?php $isChanged = !empty($cell['is_changed']); ?>
                                 <?php $tradeNote = trim((string) ($cell['note'] ?? '')); ?>
                                 <?php $tradeTitle = $tradeNote !== '' ? $tradeNote : 'Traded pick'; ?>
                                 <td class="<?= $isChanged ? 'draft-cell--changed' : 'draft-cell--default' ?>"<?= $isChanged ? ' title="' . htmlspecialchars($tradeTitle) . '"' : '' ?>>
-                                    <?php $owner = (string) ($cell['owner'] ?? ''); ?>
-                                    <span class="draft-cell-owner" title="<?= htmlspecialchars($owner) ?>"><?= htmlspecialchars($owner) ?></span>
                                     <?php if ($isChanged): ?>
-                                        <span class="insight-sub draft-trade-flag" title="<?= htmlspecialchars($tradeTitle) ?>">(traded)</span>
+                                        <?php $owner = (string) ($cell['owner'] ?? ''); ?>
+                                        <span class="draft-cell-owner"><?= htmlspecialchars($owner) ?></span>
+                                        <span class="insight-sub draft-trade-flag">
+                                            <?= htmlspecialchars($tradeNote !== '' ? $tradeNote : '(traded)') ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="draft-pick-code"><?= htmlspecialchars(sprintf('%d.%02d', (int) $round, $slotNo)) ?></span>
                                     <?php endif; ?>
                                 </td>
                             <?php endforeach; ?>
