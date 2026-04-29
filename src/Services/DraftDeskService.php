@@ -433,6 +433,69 @@ class DraftDeskService
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
+    public function updateFutureTrade(
+        int $tradeId,
+        int $seasonYear,
+        ?int $roundNo,
+        string $fromTeamName,
+        string $currentOwnerName,
+        string $note,
+        int $updatedByUserId
+    ): void {
+        $fromTeamName = trim($fromTeamName);
+        $currentOwnerName = trim($currentOwnerName);
+        $note = trim($note);
+
+        if ($tradeId <= 0) {
+            throw new InvalidArgumentException('Future trade ID is invalid.');
+        }
+
+        if ($seasonYear < 2020 || $seasonYear > 2100) {
+            throw new InvalidArgumentException('Future trade year is out of range.');
+        }
+
+        if ($fromTeamName === '' || $currentOwnerName === '') {
+            throw new InvalidArgumentException('Both from-team and new owner are required.');
+        }
+
+        if ($roundNo !== null) {
+            $roundNo = max(1, min(20, $roundNo));
+        }
+
+        $pdo = DB::get();
+        $stmt = $pdo->prepare(
+            'UPDATE draft_future_pick_trades
+             SET season_year = :season,
+                 round_no = :round,
+                 from_team_name = :from_team,
+                 current_owner_name = :owner,
+                 note = :note,
+                 created_by_user_id = :updated_by
+             WHERE id = :id'
+        );
+
+        $stmt->bindValue(':season', $seasonYear, PDO::PARAM_INT);
+        if ($roundNo === null) {
+            $stmt->bindValue(':round', null, PDO::PARAM_NULL);
+        } else {
+            $stmt->bindValue(':round', $roundNo, PDO::PARAM_INT);
+        }
+        $stmt->bindValue(':from_team', $fromTeamName, PDO::PARAM_STR);
+        $stmt->bindValue(':owner', $currentOwnerName, PDO::PARAM_STR);
+        $stmt->bindValue(':note', $note, PDO::PARAM_STR);
+        $stmt->bindValue(':updated_by', $updatedByUserId, PDO::PARAM_INT);
+        $stmt->bindValue(':id', $tradeId, PDO::PARAM_INT);
+        $stmt->execute();
+
+        if ($stmt->rowCount() === 0) {
+            $existsStmt = $pdo->prepare('SELECT id FROM draft_future_pick_trades WHERE id = :id LIMIT 1');
+            $existsStmt->execute([':id' => $tradeId]);
+            if ($existsStmt->fetchColumn() === false) {
+                throw new RuntimeException('Future trade row was not found.');
+            }
+        }
+    }
+
     private function parseTeamList(string $raw): array
     {
         $lines = preg_split('/\r\n|\r|\n/', $raw) ?: [];

@@ -57,11 +57,13 @@ $roundRange = range(1, max(1, $roundCount));
                             <td><?= htmlspecialchars((string) ($row['default_team'] ?? '')) ?></td>
                             <?php foreach ($roundRange as $round): ?>
                                 <?php $cell = $row['rounds'][$round] ?? null; ?>
-                                <td class="<?= !empty($cell['is_changed']) ? 'draft-cell--changed' : 'draft-cell--default' ?>">
+                                <?php $isChanged = !empty($cell['is_changed']); ?>
+                                <?php $tradeNote = trim((string) ($cell['note'] ?? '')); ?>
+                                <?php $tradeTitle = $tradeNote !== '' ? $tradeNote : 'Traded pick'; ?>
+                                <td class="<?= $isChanged ? 'draft-cell--changed' : 'draft-cell--default' ?>"<?= $isChanged ? ' title="' . htmlspecialchars($tradeTitle) . '"' : '' ?>>
                                     <?= htmlspecialchars((string) ($cell['owner'] ?? '')) ?>
-                                    <?php if (!empty($cell['is_changed'])): ?>
-                                        <?php $tradeNote = trim((string) ($cell['note'] ?? '')); ?>
-                                        <span class="insight-sub" title="<?= htmlspecialchars($tradeNote !== '' ? $tradeNote : 'Traded pick') ?>">(traded)</span>
+                                    <?php if ($isChanged): ?>
+                                        <span class="insight-sub" title="<?= htmlspecialchars($tradeTitle) ?>">(traded)</span>
                                     <?php endif; ?>
                                 </td>
                             <?php endforeach; ?>

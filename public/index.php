@@ -324,6 +324,35 @@ try {
                         header('Location: ' . $routeUrl('/comish') . '&season=' . rawurlencode((string) $seasonYear) . '&step=' . rawurlencode((string) $wizardStep) . '&notice=future_trade_added');
                         exit;
                     }
+
+                    if ($action === 'update_future_trade') {
+                        $tradeId = (int) ($_POST['trade_id'] ?? 0);
+
+                        $seasonInput = $_POST['season_year'] ?? $seasonYear;
+                        $roundInput = $_POST['round_no'] ?? '';
+                        $fromInput = $_POST['from_team_name'] ?? '';
+                        $ownerInput = $_POST['current_owner_name'] ?? '';
+                        $noteInput = $_POST['note'] ?? '';
+
+                        if (is_array($seasonInput)) {
+                            $tradeSeason = (int) ($seasonInput[$tradeId] ?? $seasonYear);
+                            $roundRaw = trim((string) ((is_array($roundInput) ? ($roundInput[$tradeId] ?? '') : $roundInput)));
+                            $fromTeam = (string) (is_array($fromInput) ? ($fromInput[$tradeId] ?? '') : $fromInput);
+                            $owner = (string) (is_array($ownerInput) ? ($ownerInput[$tradeId] ?? '') : $ownerInput);
+                            $note = (string) (is_array($noteInput) ? ($noteInput[$tradeId] ?? '') : $noteInput);
+                        } else {
+                            $tradeSeason = (int) $seasonInput;
+                            $roundRaw = trim((string) $roundInput);
+                            $fromTeam = (string) $fromInput;
+                            $owner = (string) $ownerInput;
+                            $note = (string) $noteInput;
+                        }
+
+                        $roundNo = $roundRaw === '' ? null : (int) $roundRaw;
+                        $draftDesk->updateFutureTrade($tradeId, $tradeSeason, $roundNo, $fromTeam, $owner, $note, $userId);
+                        header('Location: ' . $routeUrl('/comish') . '&season=' . rawurlencode((string) $seasonYear) . '&step=' . rawurlencode((string) $wizardStep) . '&notice=future_trade_updated');
+                        exit;
+                    }
                 } catch (Throwable $e) {
                     $draftError = $e->getMessage();
                 }
