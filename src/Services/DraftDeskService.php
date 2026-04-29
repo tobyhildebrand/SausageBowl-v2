@@ -187,6 +187,16 @@ class DraftDeskService
             $overrideByRoundSlot[(int) $row['round_no']][(int) $row['slot_no']] = $row;
         }
 
+        // Load team names from draft_upcoming_order if available for this season
+        $orderStmt = $pdo->prepare(
+            'SELECT slot_no, team_name FROM draft_upcoming_order WHERE season_year = :season ORDER BY slot_no ASC'
+        );
+        $orderStmt->execute([':season' => $seasonYear]);
+        $teamBySlot = [];
+        foreach ($orderStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $teamBySlot[(int) $row['slot_no']] = (string) $row['team_name'];
+        }
+
         $boardRows = [];
         for ($slot = 1; $slot <= $maxSlot; $slot++) {
             $rounds = [];
@@ -200,7 +210,11 @@ class DraftDeskService
                     'is_traded'      => $override !== null,
                 ];
             }
-            $boardRows[] = ['slot_no' => $slot, 'rounds' => $rounds];
+            $boardRows[] = [
+                'slot_no'      => $slot,
+                'default_team' => $teamBySlot[$slot] ?? '',
+                'rounds'       => $rounds,
+            ];
         }
 
         return [

@@ -124,6 +124,7 @@ $histRoundRange = $histRoundCount > 0 ? range(1, $histRoundCount) : [];
                 <thead>
                 <tr>
                     <th>Slot</th>
+                    <th>Team</th>
                     <?php foreach ($histRoundRange as $round): ?>
                         <th>Round #<?= (int) $round ?></th>
                     <?php endforeach; ?>
@@ -133,7 +134,9 @@ $histRoundRange = $histRoundCount > 0 ? range(1, $histRoundCount) : [];
                 <?php foreach ($histBoardRows as $row): ?>
                     <tr>
                         <?php $slotNo = (int) ($row['slot_no'] ?? 0); ?>
+                        <?php $defaultTeam = (string) ($row['default_team'] ?? ''); ?>
                         <td><?= $slotNo ?></td>
+                        <td><span class="draft-cell-owner"><?= htmlspecialchars($defaultTeam) ?></span></td>
                         <?php foreach ($histRoundRange as $round): ?>
                             <?php $cell = $row['rounds'][$round] ?? null; ?>
                             <?php $player = trim((string) ($cell['drafted_player'] ?? '')); ?>
