@@ -91,8 +91,70 @@ class DraftDeskService
         $roundCount = max(1, min(20, $roundCount));
         $teams = $this->parseTeamList($defaultOrderText);
 
+        $this->saveUpcomingSetupByOrder($seasonYear, $roundCount, $teams);
+    }
+
+    /**
+     * @param array<int, array{team_name: string, slot_no: int}> $assignments
+     */
+    public function saveUpcomingSetupByAssignments(int $seasonYear, int $roundCount, array $assignments): void
+    {
+        if ($seasonYear < 2020 || $seasonYear > 2100) {
+            throw new InvalidArgumentException('Season year is out of range.');
+        }
+
+        $roundCount = max(1, min(20, $roundCount));
+
+        if (count($assignments) < 4) {
+            throw new InvalidArgumentException('Please assign at least 4 teams.');
+        }
+
+        $teamsBySlot = [];
+        foreach ($assignments as $assignment) {
+            $teamName = trim((string) ($assignment['team_name'] ?? ''));
+            $slotNo = (int) ($assignment['slot_no'] ?? 0);
+
+            if ($teamName === '') {
+                throw new InvalidArgumentException('All teams in step 1 must have a name.');
+            }
+
+            if ($slotNo <= 0) {
+                throw new InvalidArgumentException('Each team must have a pick number assigned.');
+            }
+
+            if (isset($teamsBySlot[$slotNo])) {
+                throw new InvalidArgumentException('Each pick number can only be assigned once.');
+            }
+
+            $teamsBySlot[$slotNo] = $teamName;
+        }
+
+        ksort($teamsBySlot);
+        $teams = array_values($teamsBySlot);
+
+        $expectedSlots = range(1, count($teamsBySlot));
+        if (array_keys($teamsBySlot) !== $expectedSlots) {
+            throw new InvalidArgumentException('Pick numbers must be a continuous range starting at 1.');
+        }
+
+        $this->saveUpcomingSetupByOrder($seasonYear, $roundCount, $teams);
+    }
+
+    /**
+     * @param string[] $teams
+     */
+    private function saveUpcomingSetupByOrder(int $seasonYear, int $roundCount, array $teams): void
+    {
         if (count($teams) < 4) {
             throw new InvalidArgumentException('Please provide at least 4 teams in default order.');
+        }
+
+        $teams = array_values(array_unique(array_map(static fn(string $v): string => trim($v), $teams)));
+
+        foreach ($teams as $teamName) {
+            if ($teamName === '') {
+                throw new InvalidArgumentException('Team names in default order cannot be empty.');
+            }
         }
 
         $pdo = DB::get();
@@ -144,6 +206,52 @@ class DraftDeskService
             $pdo->rollBack();
             throw $e;
         }
+    }
+
+    public function upsertPickOverrideByFromTeam(
+        int $seasonYear,
+        int $roundNo,
+        string $fromTeamName,
+        string $currentOwnerName,
+        string $note,
+        int $createdByUserId
+    ): void {
+        $slotNo = $this->findSlotByFromTeam($seasonYear, $fromTeamName);
+        $this->upsertPickOverride($seasonYear, $roundNo, $slotNo, $currentOwnerName, $note, $createdByUserId);
+    }
+
+    public function removePickOverrideByFromTeam(int $seasonYear, int $roundNo, string $fromTeamName): void
+    {
+        $slotNo = $this->findSlotByFromTeam($seasonYear, $fromTeamName);
+        $this->removePickOverride($seasonYear, $roundNo, $slotNo);
+    }
+
+    private function findSlotByFromTeam(int $seasonYear, string $fromTeamName): int
+    {
+        $fromTeamName = trim($fromTeamName);
+        if ($fromTeamName === '') {
+            throw new InvalidArgumentException('From team is required.');
+        }
+
+        $pdo = DB::get();
+        $stmt = $pdo->prepare(
+            'SELECT slot_no
+             FROM draft_upcoming_order
+             WHERE season_year = :season
+               AND LOWER(team_name) = LOWER(:team_name)
+             LIMIT 1'
+        );
+        $stmt->execute([
+            ':season' => $seasonYear,
+            ':team_name' => $fromTeamName,
+        ]);
+
+        $slotNo = $stmt->fetchColumn();
+        if ($slotNo === false) {
+            throw new RuntimeException('From team was not found in default order for this season.');
+        }
+
+        return (int) $slotNo;
     }
 
     public function upsertPickOverride(

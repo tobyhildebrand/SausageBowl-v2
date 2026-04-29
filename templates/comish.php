@@ -2,26 +2,22 @@
 $seasonYear = (int) ($seasonYear ?? (int) date('Y'));
 $draftUpcoming = is_array($draftUpcoming ?? null) ? $draftUpcoming : [];
 $futureTrades = is_array($futureTrades ?? null) ? $futureTrades : [];
-$defaultOrderText = (string) ($defaultOrderText ?? '');
 $draftError = (string) ($draftError ?? '');
 $draftNotice = (string) ($draftNotice ?? '');
 $wizardStep = (int) ($wizardStep ?? 1);
 if ($wizardStep < 1 || $wizardStep > 3) {
     $wizardStep = 1;
 }
+$leagueTeamNames = is_array($leagueTeamNames ?? null) ? $leagueTeamNames : [];
 
 $roundCount = (int) ($draftUpcoming['round_count'] ?? 8);
 $boardRows = is_array($draftUpcoming['board_rows'] ?? null) ? $draftUpcoming['board_rows'] : [];
 $overrides = is_array($draftUpcoming['overrides'] ?? null) ? $draftUpcoming['overrides'] : [];
 $roundRange = range(1, max(1, $roundCount));
-$defaultTeams = [];
-foreach ($boardRows as $row) {
-    $team = trim((string) ($row['default_team'] ?? ''));
-    if ($team !== '') {
-        $defaultTeams[] = $team;
-    }
+$slotByTeam = [];
+foreach ((array) ($draftUpcoming['default_order'] ?? []) as $slot => $teamName) {
+    $slotByTeam[(string) $teamName] = (int) $slot;
 }
-$defaultTeams = array_values(array_unique($defaultTeams));
 
 $noticeMap = [
     'setup_saved' => 'Upcoming draft setup saved.',
@@ -92,10 +88,40 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
                     <input class="auth-field__input" type="number" name="round_count" min="1" max="20" value="<?= (int) $roundCount ?>" required>
                 </label>
 
-                <label class="auth-field">
-                    <span class="auth-field__label">Default Draft Order (one team per line)</span>
-                    <textarea class="auth-field__input draft-order-text" name="default_order_text" rows="8" required><?= htmlspecialchars($defaultOrderText) ?></textarea>
-                </label>
+                <?php if ($leagueTeamNames === []): ?>
+                    <p class="home-note">Team list is currently unavailable. Please ensure Yahoo sync is connected, then refresh this page.</p>
+                <?php else: ?>
+                    <div class="draft-board-wrap">
+                        <table class="history-table draft-assignment-table">
+                            <thead>
+                            <tr>
+                                <th>Team</th>
+                                <th>Pick #</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <?php $pickOptions = range(1, count($leagueTeamNames)); ?>
+                            <?php foreach ($leagueTeamNames as $teamName): ?>
+                                <?php $selectedSlot = (int) ($slotByTeam[(string) $teamName] ?? 0); ?>
+                                <tr>
+                                    <td>
+                                        <?= htmlspecialchars((string) $teamName) ?>
+                                        <input type="hidden" name="team_name[]" value="<?= htmlspecialchars((string) $teamName) ?>">
+                                    </td>
+                                    <td>
+                                        <select class="auth-field__input" name="slot_no[]" required>
+                                            <option value="">Choose pick</option>
+                                            <?php foreach ($pickOptions as $pickNo): ?>
+                                                <option value="<?= (int) $pickNo ?>"<?= $selectedSlot === (int) $pickNo ? ' selected' : '' ?>>#<?= (int) $pickNo ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
             </div>
 
             <div class="auth-actions">
@@ -150,13 +176,23 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
                     </label>
 
                     <label class="auth-field">
-                        <span class="auth-field__label">Slot</span>
-                        <input class="auth-field__input" type="number" name="slot_no" min="1" max="50" required>
+                        <span class="auth-field__label">From Team (default owner)</span>
+                        <select class="auth-field__input" name="from_team_name" required>
+                            <option value="">Choose team</option>
+                            <?php foreach ($leagueTeamNames as $teamName): ?>
+                                <option value="<?= htmlspecialchars((string) $teamName) ?>"><?= htmlspecialchars((string) $teamName) ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </label>
 
                     <label class="auth-field">
                         <span class="auth-field__label">Current Owner Team</span>
-                        <input class="auth-field__input" type="text" name="current_owner_name" maxlength="120" list="upcoming-team-options" required>
+                        <select class="auth-field__input" name="current_owner_name" required>
+                            <option value="">Choose team</option>
+                            <?php foreach ($leagueTeamNames as $teamName): ?>
+                                <option value="<?= htmlspecialchars((string) $teamName) ?>"><?= htmlspecialchars((string) $teamName) ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </label>
 
                     <label class="auth-field">
@@ -170,14 +206,6 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
                 </div>
             </form>
 
-            <?php if ($defaultTeams !== []): ?>
-                <datalist id="upcoming-team-options">
-                    <?php foreach ($defaultTeams as $teamName): ?>
-                        <option value="<?= htmlspecialchars((string) $teamName) ?>"></option>
-                    <?php endforeach; ?>
-                </datalist>
-            <?php endif; ?>
-
             <form method="post" action="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=2" class="auth-form card--spaced">
                 <input type="hidden" name="action" value="delete_pick_override">
                 <input type="hidden" name="season_year" value="<?= (int) $seasonYear ?>">
@@ -190,8 +218,13 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
                         <input class="auth-field__input" type="number" name="round_no" min="1" max="20" required>
                     </label>
                     <label class="auth-field">
-                        <span class="auth-field__label">Slot</span>
-                        <input class="auth-field__input" type="number" name="slot_no" min="1" max="50" required>
+                        <span class="auth-field__label">From Team</span>
+                        <select class="auth-field__input" name="from_team_name" required>
+                            <option value="">Choose team</option>
+                            <?php foreach ($leagueTeamNames as $teamName): ?>
+                                <option value="<?= htmlspecialchars((string) $teamName) ?>"><?= htmlspecialchars((string) $teamName) ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </label>
                 </div>
 
@@ -264,12 +297,30 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
 
             <label class="auth-field">
                 <span class="auth-field__label">From Team</span>
-                <input class="auth-field__input" type="text" name="from_team_name" maxlength="120" list="upcoming-team-options" required>
+                <?php if ($leagueTeamNames !== []): ?>
+                    <select class="auth-field__input" name="from_team_name" required>
+                        <option value="">Choose team</option>
+                        <?php foreach ($leagueTeamNames as $teamName): ?>
+                            <option value="<?= htmlspecialchars((string) $teamName) ?>"><?= htmlspecialchars((string) $teamName) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php else: ?>
+                    <input class="auth-field__input" type="text" name="from_team_name" maxlength="120" required>
+                <?php endif; ?>
             </label>
 
             <label class="auth-field">
                 <span class="auth-field__label">Current Owner</span>
-                <input class="auth-field__input" type="text" name="current_owner_name" maxlength="120" list="upcoming-team-options" required>
+                <?php if ($leagueTeamNames !== []): ?>
+                    <select class="auth-field__input" name="current_owner_name" required>
+                        <option value="">Choose team</option>
+                        <?php foreach ($leagueTeamNames as $teamName): ?>
+                            <option value="<?= htmlspecialchars((string) $teamName) ?>"><?= htmlspecialchars((string) $teamName) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php else: ?>
+                    <input class="auth-field__input" type="text" name="current_owner_name" maxlength="120" required>
+                <?php endif; ?>
             </label>
 
             <label class="auth-field">

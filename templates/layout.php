@@ -16,6 +16,7 @@ if ($routeFromQuery !== '') {
 $isHomeActive = $currentRoute === '/';
 $isRostersActive = $currentRoute === '/rosters';
 $isHistoryActive = $currentRoute === '/history';
+$isDraftBoardActive = $currentRoute === '/draft-board';
 $isComishActive = $currentRoute === '/comish';
 ?>
 <html lang="en">
@@ -47,6 +48,7 @@ $isComishActive = $currentRoute === '/comish';
                 <a href="/index.php" class="<?= $isHomeActive ? 'is-active' : '' ?>" aria-current="<?= $isHomeActive ? 'page' : 'false' ?>">Home</a>
                 <a href="/index.php?r=rosters" class="<?= $isRostersActive ? 'is-active' : '' ?>" aria-current="<?= $isRostersActive ? 'page' : 'false' ?>">Rosters</a>
                 <a href="/index.php?r=history" class="<?= $isHistoryActive ? 'is-active' : '' ?>" aria-current="<?= $isHistoryActive ? 'page' : 'false' ?>">History</a>
+                <a href="/index.php?r=draft-board" class="<?= $isDraftBoardActive ? 'is-active' : '' ?>" aria-current="<?= $isDraftBoardActive ? 'page' : 'false' ?>">Draft</a>
                 <a href="/index.php?r=comish" class="<?= $isComishActive ? 'is-active' : '' ?>" aria-current="<?= $isComishActive ? 'page' : 'false' ?>">Comish</a>
             </nav>
 

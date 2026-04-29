@@ -29,7 +29,7 @@ use App\Services\RosterService;
 // Load app config (used for display values; DB connection is lazy via DB::get())
 $config = require APP_ROOT . '/config/config.php';
 
-// Session is needed for the Yahoo OAuth CSRF state parameter.
+// Session is needed for auth and Yahoo OAuth CSRF state parameter.
 session_start();
 
 // Enable error display in debug mode only.
@@ -164,6 +164,50 @@ try {
             header('Location: ' . $routeUrl('/'));
             exit;
 
+        case '/rosters':
+            $oauth = new YahooOAuthClient($config['yahoo']);
+            $apiClient = new YahooApiClient($oauth);
+            $rosterService = new RosterService($apiClient, $config['yahoo']['league_key']);
+            $overview = $rosterService->getRosterOverview();
+            $render('rosters', [
+                'title'   => 'Rosters',
+                'teams'   => $overview['teams'],
+                'league'  => $overview['league'],
+            ]);
+            break;
+
+        case '/history':
+            $oauth = new YahooOAuthClient($config['yahoo']);
+            $apiClient = new YahooApiClient($oauth);
+            $historyService = new HistoricalStatsService($apiClient, $config['yahoo']['league_key'], 2018);
+            $pointsService = new HistoricalPointsService($apiClient, $config['yahoo']['league_key'], 2018);
+            $insightsService = new HistoricalInsightsService($apiClient, $config['yahoo']['league_key'], 2018, 10.0);
+            $history = $historyService->getHistoricalStandings();
+            $points = $pointsService->getHistoricalPoints();
+            $insights = $insightsService->getInsights($history, $points);
+
+            $render('historical', [
+                'title'   => 'Historical Stats',
+                'history' => $history,
+                'points'  => $points,
+                'insights' => $insights,
+            ]);
+            break;
+
+        case '/draft-board':
+            $seasonYear = (int) ($_GET['season'] ?? date('Y'));
+            if ($seasonYear < 2020 || $seasonYear > 2100) {
+                $seasonYear = (int) date('Y');
+            }
+
+            $upcoming = $draftDesk->getUpcomingSeasonData($seasonYear);
+            $render('draft_board', [
+                'title' => 'Draft Board',
+                'seasonYear' => $seasonYear,
+                'draftUpcoming' => $upcoming,
+            ]);
+            break;
+
         case '/comish':
             if ($auth->isLoggedIn() && !$auth->isCommissioner()) {
                 http_response_code(403);
@@ -188,6 +232,25 @@ try {
 
             $draftError = null;
             $draftNotice = (string) ($_GET['notice'] ?? '');
+            $leagueTeamNames = [];
+
+            try {
+                $oauth = new YahooOAuthClient($config['yahoo']);
+                $apiClient = new YahooApiClient($oauth);
+                $rosterService = new RosterService($apiClient, $config['yahoo']['league_key']);
+                $overview = $rosterService->getRosterOverview();
+
+                foreach ((array) ($overview['teams'] ?? []) as $team) {
+                    $name = trim((string) ($team['name'] ?? ''));
+                    if ($name !== '') {
+                        $leagueTeamNames[] = $name;
+                    }
+                }
+            } catch (Throwable $e) {
+                // Fallback to saved default-order teams below.
+            }
+
+            $leagueTeamNames = array_values(array_unique($leagueTeamNames));
 
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $action = (string) ($_POST['action'] ?? '');
@@ -198,8 +261,19 @@ try {
                     if ($action === 'save_upcoming_setup') {
                         $setupSeason = (int) ($_POST['season_year'] ?? $seasonYear);
                         $roundCount = (int) ($_POST['round_count'] ?? 8);
-                        $defaultOrderText = (string) ($_POST['default_order_text'] ?? '');
-                        $draftDesk->saveUpcomingSetup($setupSeason, $roundCount, $defaultOrderText);
+                        $teamNames = (array) ($_POST['team_name'] ?? []);
+                        $slotNos = (array) ($_POST['slot_no'] ?? []);
+
+                        $assignments = [];
+                        $rowCount = min(count($teamNames), count($slotNos));
+                        for ($i = 0; $i < $rowCount; $i++) {
+                            $assignments[] = [
+                                'team_name' => (string) ($teamNames[$i] ?? ''),
+                                'slot_no' => (int) ($slotNos[$i] ?? 0),
+                            ];
+                        }
+
+                        $draftDesk->saveUpcomingSetupByAssignments($setupSeason, $roundCount, $assignments);
                         header('Location: ' . $routeUrl('/comish') . '&season=' . rawurlencode((string) $setupSeason) . '&step=2&notice=setup_saved');
                         exit;
                     }
@@ -207,10 +281,10 @@ try {
                     if ($action === 'save_pick_override') {
                         $overrideSeason = (int) ($_POST['season_year'] ?? $seasonYear);
                         $roundNo = (int) ($_POST['round_no'] ?? 0);
-                        $slotNo = (int) ($_POST['slot_no'] ?? 0);
+                        $fromTeamName = (string) ($_POST['from_team_name'] ?? '');
                         $owner = (string) ($_POST['current_owner_name'] ?? '');
                         $note = (string) ($_POST['note'] ?? '');
-                        $draftDesk->upsertPickOverride($overrideSeason, $roundNo, $slotNo, $owner, $note, $userId);
+                        $draftDesk->upsertPickOverrideByFromTeam($overrideSeason, $roundNo, $fromTeamName, $owner, $note, $userId);
                         header('Location: ' . $routeUrl('/comish') . '&season=' . rawurlencode((string) $overrideSeason) . '&step=2&notice=override_saved');
                         exit;
                     }
@@ -218,8 +292,8 @@ try {
                     if ($action === 'delete_pick_override') {
                         $overrideSeason = (int) ($_POST['season_year'] ?? $seasonYear);
                         $roundNo = (int) ($_POST['round_no'] ?? 0);
-                        $slotNo = (int) ($_POST['slot_no'] ?? 0);
-                        $draftDesk->removePickOverride($overrideSeason, $roundNo, $slotNo);
+                        $fromTeamName = (string) ($_POST['from_team_name'] ?? '');
+                        $draftDesk->removePickOverrideByFromTeam($overrideSeason, $roundNo, $fromTeamName);
                         header('Location: ' . $routeUrl('/comish') . '&season=' . rawurlencode((string) $overrideSeason) . '&step=2&notice=override_deleted');
                         exit;
                     }
@@ -241,22 +315,28 @@ try {
             }
 
             $upcoming = $draftDesk->getUpcomingSeasonData($seasonYear);
-            $futureTrades = $draftDesk->listFutureTrades($seasonYear + 1);
 
-            $defaultOrderLines = [];
-            foreach (($upcoming['default_order'] ?? []) as $teamName) {
-                $defaultOrderLines[] = (string) $teamName;
+            if ($leagueTeamNames === []) {
+                foreach ((array) ($upcoming['default_order'] ?? []) as $name) {
+                    $teamName = trim((string) $name);
+                    if ($teamName !== '') {
+                        $leagueTeamNames[] = $teamName;
+                    }
+                }
+                $leagueTeamNames = array_values(array_unique($leagueTeamNames));
             }
+
+            $futureTrades = $draftDesk->listFutureTrades($seasonYear + 1);
 
             $render('comish', [
                 'title'   => 'Comish',
                 'seasonYear' => $seasonYear,
                 'draftUpcoming' => $upcoming,
                 'futureTrades' => $futureTrades,
-                'defaultOrderText' => implode("\n", $defaultOrderLines),
                 'draftError' => $draftError,
                 'draftNotice' => $draftNotice,
                 'wizardStep' => $wizardStep,
+                'leagueTeamNames' => $leagueTeamNames,
             ]);
             break;
 
@@ -309,36 +389,6 @@ try {
             $render('yahoo_connect', [
                 'title'   => 'Yahoo Connected',
                 'success' => true,
-            ]);
-            break;
-
-        case '/rosters':
-            $oauth = new YahooOAuthClient($config['yahoo']);
-            $apiClient = new YahooApiClient($oauth);
-            $rosterService = new RosterService($apiClient, $config['yahoo']['league_key']);
-            $overview = $rosterService->getRosterOverview();
-            $render('rosters', [
-                'title'   => 'Rosters',
-                'teams'   => $overview['teams'],
-                'league'  => $overview['league'],
-            ]);
-            break;
-
-        case '/history':
-            $oauth = new YahooOAuthClient($config['yahoo']);
-            $apiClient = new YahooApiClient($oauth);
-            $historyService = new HistoricalStatsService($apiClient, $config['yahoo']['league_key'], 2018);
-            $pointsService = new HistoricalPointsService($apiClient, $config['yahoo']['league_key'], 2018);
-            $insightsService = new HistoricalInsightsService($apiClient, $config['yahoo']['league_key'], 2018, 10.0);
-            $history = $historyService->getHistoricalStandings();
-            $points = $pointsService->getHistoricalPoints();
-            $insights = $insightsService->getInsights($history, $points);
-
-            $render('historical', [
-                'title'   => 'Historical Stats',
-                'history' => $history,
-                'points'  => $points,
-                'insights' => $insights,
             ]);
             break;
 
