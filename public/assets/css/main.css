@@ -428,6 +428,41 @@ a:hover {
     color: var(--ink-soft);
 }
 
+.history-tabs {
+    display: inline-flex;
+    gap: 0.4rem;
+    margin-bottom: 0.9rem;
+    padding: 0.2rem;
+    border: 1px solid var(--brand-line);
+    border-radius: 999px;
+    background: var(--surface-2);
+}
+
+.history-tab {
+    border: 1px solid transparent;
+    background: transparent;
+    color: #2a3a48;
+    border-radius: 999px;
+    font-size: 0.86rem;
+    font-weight: 700;
+    padding: 0.35rem 0.9rem;
+    cursor: pointer;
+}
+
+.history-tab:hover {
+    background: #e8e0cf;
+}
+
+.history-tab.is-active {
+    background: linear-gradient(135deg, #295f50, #234e42);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.history-pane {
+    margin-top: 0.2rem;
+}
+
 .history-state {
     margin: -0.2rem 0 1rem;
     padding: 0.65rem 0.85rem;
@@ -522,6 +557,14 @@ a:hover {
 
 .history-place {
     white-space: nowrap;
+}
+
+.history-place--points {
+    font-variant-numeric: tabular-nums;
+}
+
+.history-points__value {
+    font-weight: 600;
 }
 
 .history-place__content {

@@ -8,7 +8,7 @@ use App\Core\YahooApiClient;
 use RuntimeException;
 use Throwable;
 
-class HistoricalStatsService
+class HistoricalPointsService
 {
     private const EXCLUDED_TEAM_NAME_PARTS = ['mordlustig'];
 
@@ -27,19 +27,20 @@ class HistoricalStatsService
      * @return array{
      *   seasons: int[],
      *   last3_seasons: int[],
-    *   season_states: array<int, array{status: string, message: string, expected_teams: int, teams_found: int}>,
+     *   season_states: array<int, array{status: string, message: string, expected_teams: int, teams_found: int}>,
      *   rows: array<int, array{
      *     id: string,
      *     team_name: string,
      *     logo_url: string,
      *     seasons_played: int,
-     *     places: array<int, int>,
-     *     average_place: float,
-     *     trend_l3y: ?float
+     *     points: array<int, float>,
+     *     average_points: float,
+     *     trend_l3y: ?float,
+     *     all_time_points: float
      *   }>
      * }
      */
-    public function getHistoricalStandings(): array
+    public function getHistoricalPoints(): array
     {
         $leagues = $this->collectLeagueChain();
 
@@ -59,7 +60,7 @@ class HistoricalStatsService
             $latestSeasonInChain = max($latestSeasonInChain, (int) ($league['season'] ?? 0));
         }
 
-        // Historical view should include only fully finished seasons.
+        // Historical points view should include only fully finished seasons.
         // Prefer Yahoo's is_finished flag and fall back to excluding the latest season.
         $finishedLeagues = [];
         foreach ($leagues as $league) {
@@ -92,7 +93,7 @@ class HistoricalStatsService
 
             try {
                 $standingsRaw = $this->api->get('league/' . $league['league_key'] . '/standings');
-                $teams = $this->parseStandings($standingsRaw);
+                $teams = $this->parseStandingsPoints($standingsRaw);
             } catch (Throwable $e) {
                 $seasonStates[$season] = [
                     'status' => 'error',
@@ -107,7 +108,7 @@ class HistoricalStatsService
             if ($expectedTeams > 0 && $teamsFound < $expectedTeams) {
                 $seasonStates[$season] = [
                     'status' => 'partial',
-                    'message' => 'Yahoo returned partial standings for this season.',
+                    'message' => 'Yahoo returned partial points for this season.',
                     'expected_teams' => $expectedTeams,
                     'teams_found' => $teamsFound,
                 ];
@@ -130,7 +131,7 @@ class HistoricalStatsService
                         'logo_url' => $team['logo_url'],
                         'first_seen_season' => $season,
                         'last_seen_season' => $season,
-                        'places' => [],
+                        'points' => [],
                     ];
                 }
 
@@ -140,7 +141,7 @@ class HistoricalStatsService
                     $rowsById[$id]['last_seen_season'] = $season;
                 }
 
-                $rowsById[$id]['places'][$season] = (int) $team['rank'];
+                $rowsById[$id]['points'][$season] = (float) $team['points_for'];
             }
         }
 
@@ -185,23 +186,24 @@ class HistoricalStatsService
         $rows = [];
 
         foreach ($rowsById as $row) {
-            /** @var array<int, int> $places */
-            $places = $row['places'];
-            ksort($places);
+            /** @var array<int, float> $pointsBySeason */
+            $pointsBySeason = $row['points'];
+            ksort($pointsBySeason);
 
-            $all = array_values($places);
-            $averagePlace = round(array_sum($all) / max(1, count($all)), 1);
+            $all = array_values($pointsBySeason);
+            $allTimePoints = round((float) array_sum($all), 2);
+            $averagePoints = round($allTimePoints / max(1, count($all)), 1);
 
             $last3Values = [];
             foreach ($last3Seasons as $s) {
-                if (isset($places[$s])) {
-                    $last3Values[] = $places[$s];
+                if (isset($pointsBySeason[$s])) {
+                    $last3Values[] = (float) $pointsBySeason[$s];
                 }
             }
 
             $trendL3y = null;
             if ($last3Values !== []) {
-                $trendL3y = round(array_sum($last3Values) / count($last3Values), 1);
+                $trendL3y = round((float) array_sum($last3Values) / count($last3Values), 1);
             }
 
             $rows[] = [
@@ -209,15 +211,16 @@ class HistoricalStatsService
                 'team_name' => (string) $row['team_name'],
                 'logo_url' => (string) $row['logo_url'],
                 'seasons_played' => count($all),
-                'places' => $places,
-                'average_place' => $averagePlace,
+                'points' => $pointsBySeason,
+                'average_points' => $averagePoints,
                 'trend_l3y' => $trendL3y,
+                'all_time_points' => $allTimePoints,
             ];
         }
 
         usort(
             $rows,
-            static fn(array $a, array $b): int => ($a['average_place'] <=> $b['average_place'])
+            static fn(array $a, array $b): int => ($b['all_time_points'] <=> $a['all_time_points'])
                 ?: strcmp((string) $a['team_name'], (string) $b['team_name'])
         );
 
@@ -328,9 +331,9 @@ class HistoricalStatsService
     }
 
     /**
-     * @return array<int, array{identity: string, name: string, logo_url: string, rank: int}>
+     * @return array<int, array{identity: string, name: string, logo_url: string, points_for: float}>
      */
-    private function parseStandings(array $raw): array
+    private function parseStandingsPoints(array $raw): array
     {
         $leagueData = $raw['fantasy_content']['league'] ?? null;
 
@@ -385,17 +388,8 @@ class HistoricalStatsService
                 $guid = $flat['managers'][0]['manager']['guid'];
             }
 
-            $rank = 0;
-            if (isset($teamData[1]['team_standings']['rank']) && is_numeric($teamData[1]['team_standings']['rank'])) {
-                $rank = (int) $teamData[1]['team_standings']['rank'];
-            } else {
-                $foundRank = $this->findFirstNumericRank($teamData);
-                if ($foundRank !== null) {
-                    $rank = $foundRank;
-                }
-            }
-
-            if ($rank <= 0) {
+            $pointsFor = $this->extractPointsFor($teamData);
+            if ($pointsFor === null) {
                 continue;
             }
 
@@ -407,11 +401,77 @@ class HistoricalStatsService
                 'identity' => $identity,
                 'name' => $name,
                 'logo_url' => $logoUrl,
-                'rank' => $rank,
+                'points_for' => $pointsFor,
             ];
         }
 
         return $teams;
+    }
+
+    private function extractPointsFor(array $teamData): ?float
+    {
+        if (
+            isset($teamData[1]['team_standings']['outcome_totals']['points_for'])
+            && is_scalar($teamData[1]['team_standings']['outcome_totals']['points_for'])
+        ) {
+            $parsed = $this->toFloat($teamData[1]['team_standings']['outcome_totals']['points_for']);
+            if ($parsed !== null) {
+                return $parsed;
+            }
+        }
+
+        if (
+            isset($teamData[1]['team_standings']['points_for'])
+            && is_scalar($teamData[1]['team_standings']['points_for'])
+        ) {
+            $parsed = $this->toFloat($teamData[1]['team_standings']['points_for']);
+            if ($parsed !== null) {
+                return $parsed;
+            }
+        }
+
+        return $this->findFirstNumericByKey($teamData, ['points_for']);
+    }
+
+    /** @param array<int, string> $keys */
+    private function findFirstNumericByKey(array $node, array $keys): ?float
+    {
+        foreach ($node as $k => $v) {
+            if (in_array((string) $k, $keys, true) && is_scalar($v)) {
+                $parsed = $this->toFloat($v);
+                if ($parsed !== null) {
+                    return $parsed;
+                }
+            }
+
+            if (is_array($v)) {
+                $found = $this->findFirstNumericByKey($v, $keys);
+                if ($found !== null) {
+                    return $found;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /** @param mixed $value */
+    private function toFloat($value): ?float
+    {
+        if (is_int($value) || is_float($value)) {
+            return (float) $value;
+        }
+
+        if (!is_string($value)) {
+            return null;
+        }
+
+        $normalized = trim(str_replace(',', '', $value));
+        if ($normalized === '' || !is_numeric($normalized)) {
+            return null;
+        }
+
+        return (float) $normalized;
     }
 
     /** @return array<string, mixed> */
@@ -430,27 +490,6 @@ class HistoricalStatsService
         }
 
         return $flat;
-    }
-
-    private function findFirstNumericRank(array $node): ?int
-    {
-        foreach ($node as $k => $v) {
-            if ($k === 'rank' && is_numeric($v)) {
-                $rank = (int) $v;
-                if ($rank > 0) {
-                    return $rank;
-                }
-            }
-
-            if (is_array($v)) {
-                $found = $this->findFirstNumericRank($v);
-                if ($found !== null) {
-                    return $found;
-                }
-            }
-        }
-
-        return null;
     }
 
     private function normalizeName(string $name): string
