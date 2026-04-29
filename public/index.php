@@ -20,6 +20,7 @@ use App\Core\YahooApiClient;
 use App\Core\YahooOAuthClient;
 use App\Helpers\View;
 use App\Services\AuthService;
+use App\Services\CacheService;
 use App\Services\DraftDeskService;
 use App\Services\HistoricalInsightsService;
 use App\Services\HistoricalPointsService;
@@ -177,14 +178,29 @@ try {
             break;
 
         case '/history':
-            $oauth = new YahooOAuthClient($config['yahoo']);
-            $apiClient = new YahooApiClient($oauth);
-            $historyService = new HistoricalStatsService($apiClient, $config['yahoo']['league_key'], 2018);
-            $pointsService = new HistoricalPointsService($apiClient, $config['yahoo']['league_key'], 2018);
-            $insightsService = new HistoricalInsightsService($apiClient, $config['yahoo']['league_key'], 2018, 10.0);
-            $history = $historyService->getHistoricalStandings();
-            $points = $pointsService->getHistoricalPoints();
-            $insights = $insightsService->getInsights($history, $points);
+            $cache = new CacheService();
+            $ttl = 3600; // 1 hour
+
+            $history = $cache->remember('history.standings', $ttl, static function () use ($config): array {
+                $oauth = new YahooOAuthClient($config['yahoo']);
+                $apiClient = new YahooApiClient($oauth);
+                $historyService = new HistoricalStatsService($apiClient, $config['yahoo']['league_key'], 2018);
+                return $historyService->getHistoricalStandings();
+            });
+
+            $points = $cache->remember('history.points', $ttl, static function () use ($config): array {
+                $oauth = new YahooOAuthClient($config['yahoo']);
+                $apiClient = new YahooApiClient($oauth);
+                $pointsService = new HistoricalPointsService($apiClient, $config['yahoo']['league_key'], 2018);
+                return $pointsService->getHistoricalPoints();
+            });
+
+            $insights = $cache->remember('history.insights', $ttl, static function () use ($config, $history, $points): array {
+                $oauth = new YahooOAuthClient($config['yahoo']);
+                $apiClient = new YahooApiClient($oauth);
+                $insightsService = new HistoricalInsightsService($apiClient, $config['yahoo']['league_key'], 2018, 10.0);
+                return $insightsService->getInsights($history, $points);
+            });
 
             $render('historical', [
                 'title'   => 'Historical Stats',
@@ -204,6 +220,7 @@ try {
             $viewMode = 'none';
             $upcoming = [];
             $futureTrades = [];
+            $historicalDraft = [];
 
             if ($upcomingSeasonYear !== null && $seasonYear === $upcomingSeasonYear) {
                 $viewMode = 'board';
@@ -211,6 +228,9 @@ try {
             } elseif ($upcomingSeasonYear !== null && $seasonYear > $upcomingSeasonYear) {
                 $viewMode = 'future_trades';
                 $futureTrades = $draftDesk->listFutureTrades($seasonYear);
+            } elseif ($upcomingSeasonYear === null || $seasonYear < $upcomingSeasonYear) {
+                $historicalDraft = $draftDesk->getHistoricalDraftData($seasonYear);
+                $viewMode = $historicalDraft !== [] ? 'historical' : 'none';
             }
 
             $render('draft_board', [
@@ -220,6 +240,7 @@ try {
                 'viewMode' => $viewMode,
                 'draftUpcoming' => $upcoming,
                 'futureTrades' => $futureTrades,
+                'historicalDraft' => $historicalDraft,
             ]);
             break;
 

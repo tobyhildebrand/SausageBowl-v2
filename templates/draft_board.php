@@ -4,9 +4,13 @@ $upcomingSeasonYear = isset($upcomingSeasonYear) && $upcomingSeasonYear !== null
 $viewMode = (string) ($viewMode ?? 'none');
 $draftUpcoming = is_array($draftUpcoming ?? null) ? $draftUpcoming : [];
 $futureTrades = is_array($futureTrades ?? null) ? $futureTrades : [];
+$historicalDraft = is_array($historicalDraft ?? null) ? $historicalDraft : [];
 $boardRows = is_array($draftUpcoming['board_rows'] ?? null) ? $draftUpcoming['board_rows'] : [];
 $roundCount = (int) ($draftUpcoming['round_count'] ?? 8);
 $roundRange = range(1, max(1, $roundCount));
+$histBoardRows = is_array($historicalDraft['board_rows'] ?? null) ? $historicalDraft['board_rows'] : [];
+$histRoundCount = (int) ($historicalDraft['round_count'] ?? 0);
+$histRoundRange = $histRoundCount > 0 ? range(1, $histRoundCount) : [];
 ?>
 
 <section class="page-header">
@@ -115,11 +119,49 @@ $roundRange = range(1, max(1, $roundCount));
                     </tbody>
                 </table>
             <?php endif; ?>
+        <?php elseif ($viewMode === 'historical'): ?>
+            <table class="history-table draft-board-table draft-board-table--matrix">
+                <thead>
+                <tr>
+                    <th>Slot</th>
+                    <?php foreach ($histRoundRange as $round): ?>
+                        <th>Round #<?= (int) $round ?></th>
+                    <?php endforeach; ?>
+                </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($histBoardRows as $row): ?>
+                    <tr>
+                        <?php $slotNo = (int) ($row['slot_no'] ?? 0); ?>
+                        <td><?= $slotNo ?></td>
+                        <?php foreach ($histRoundRange as $round): ?>
+                            <?php $cell = $row['rounds'][$round] ?? null; ?>
+                            <?php $player = trim((string) ($cell['drafted_player'] ?? '')); ?>
+                            <?php $isTraded = !empty($cell['is_traded']); ?>
+                            <?php $owner = trim((string) ($cell['owner'] ?? '')); ?>
+                            <?php $fromTeam = trim((string) ($cell['from_team'] ?? '')); ?>
+                            <?php $note = trim((string) ($cell['note'] ?? '')); ?>
+                            <?php $tooltip = $isTraded ? ($note !== '' ? $note : "Traded from {$fromTeam}") : ''; ?>
+                            <td class="<?= $isTraded ? 'draft-cell--changed' : 'draft-cell--default' ?>"<?= $tooltip !== '' ? ' title="' . htmlspecialchars($tooltip) . '"' : '' ?>>
+                                <?php if ($isTraded && $owner !== ''): ?>
+                                    <span class="draft-cell-owner"><?= htmlspecialchars($owner) ?></span>
+                                <?php endif; ?>
+                                <?php if ($player !== ''): ?>
+                                    <span class="draft-picked-player"><?= htmlspecialchars($player) ?></span>
+                                <?php else: ?>
+                                    <span class="draft-pick-code"><?= htmlspecialchars(sprintf('%d.%02d', (int) $round, $slotNo)) ?></span>
+                                <?php endif; ?>
+                            </td>
+                        <?php endforeach; ?>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
         <?php else: ?>
             <?php if ($upcomingSeasonYear === null): ?>
                 <p class="home-note">No upcoming draft season is configured yet.</p>
             <?php else: ?>
-                <p class="home-note">Draft board is only available for upcoming season <?= (int) $upcomingSeasonYear ?>. Select that season to view the board, or choose a later season to view future pick trades.</p>
+                <p class="home-note">No draft data found for <?= (int) $seasonYear ?>. Select season <?= (int) $upcomingSeasonYear ?> for the upcoming board, a later season for future pick trades, or a past season with imported picks.</p>
             <?php endif; ?>
         <?php endif; ?>
     </div>

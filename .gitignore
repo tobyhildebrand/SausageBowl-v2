@@ -17,3 +17,6 @@ Thumbs.db
 # PHP error logs and deployment logs
 *.log
 
+# File-based cache (generated at runtime)
+/cache/
+

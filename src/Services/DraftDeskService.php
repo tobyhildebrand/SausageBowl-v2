@@ -140,6 +140,78 @@ class DraftDeskService
     }
 
     /**
+     * Build a display-ready board for a historical (past) season using only
+     * draft_pick_players and draft_pick_overrides – no draft_upcoming_settings
+     * or draft_upcoming_order needed.
+     *
+     * Returns an empty array if no player data exists for the season.
+     */
+    public function getHistoricalDraftData(int $seasonYear): array
+    {
+        $pdo = DB::get();
+
+        $pickedStmt = $pdo->prepare(
+            'SELECT round_no, slot_no, player_name
+             FROM draft_pick_players
+             WHERE season_year = :season
+             ORDER BY round_no ASC, slot_no ASC'
+        );
+        $pickedStmt->execute([':season' => $seasonYear]);
+        $pickedRows = $pickedStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if ($pickedRows === []) {
+            return [];
+        }
+
+        $overridesStmt = $pdo->prepare(
+            'SELECT round_no, slot_no, from_team_name, current_owner_name, note
+             FROM draft_pick_overrides
+             WHERE season_year = :season'
+        );
+        $overridesStmt->execute([':season' => $seasonYear]);
+        $overrideRows = $overridesStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $pickedByRoundSlot = [];
+        $maxRound = 0;
+        $maxSlot = 0;
+        foreach ($pickedRows as $row) {
+            $round = (int) $row['round_no'];
+            $slot  = (int) $row['slot_no'];
+            $pickedByRoundSlot[$round][$slot] = trim((string) $row['player_name']);
+            $maxRound = max($maxRound, $round);
+            $maxSlot  = max($maxSlot, $slot);
+        }
+
+        $overrideByRoundSlot = [];
+        foreach ($overrideRows as $row) {
+            $overrideByRoundSlot[(int) $row['round_no']][(int) $row['slot_no']] = $row;
+        }
+
+        $boardRows = [];
+        for ($slot = 1; $slot <= $maxSlot; $slot++) {
+            $rounds = [];
+            for ($round = 1; $round <= $maxRound; $round++) {
+                $override = $overrideByRoundSlot[$round][$slot] ?? null;
+                $rounds[$round] = [
+                    'drafted_player' => $pickedByRoundSlot[$round][$slot] ?? '',
+                    'owner'          => $override !== null ? (string) $override['current_owner_name'] : '',
+                    'from_team'      => $override !== null ? (string) $override['from_team_name'] : '',
+                    'note'           => $override !== null ? (string) $override['note'] : '',
+                    'is_traded'      => $override !== null,
+                ];
+            }
+            $boardRows[] = ['slot_no' => $slot, 'rounds' => $rounds];
+        }
+
+        return [
+            'season_year' => $seasonYear,
+            'round_count' => $maxRound,
+            'slot_count'  => $maxSlot,
+            'board_rows'  => $boardRows,
+        ];
+    }
+
+    /**
      * @param array<int, array{team_name: string, slot_no: int}> $assignments
      */
     public function saveUpcomingSetupByAssignments(int $seasonYear, int $roundCount, array $assignments): void
