@@ -428,6 +428,23 @@ a:hover {
     color: var(--ink-soft);
 }
 
+.history-state {
+    margin: -0.2rem 0 1rem;
+    padding: 0.65rem 0.85rem;
+    border-radius: 0.6rem;
+    font-size: 0.9rem;
+}
+
+.history-state--warning {
+    border: 1px solid #f0b36a;
+    background: var(--warn-bg);
+    color: var(--warn-ink);
+}
+
+.history-state ul {
+    margin: 0.35rem 0 0 1rem;
+}
+
 .history-table-wrap {
     overflow-x: auto;
     border: 1px solid var(--brand-line);
@@ -440,6 +457,7 @@ a:hover {
     width: 100%;
     border-collapse: collapse;
     min-width: 860px;
+    font-variant-numeric: tabular-nums;
 }
 
 .history-table thead th {
@@ -506,17 +524,38 @@ a:hover {
     white-space: nowrap;
 }
 
+.history-place__content {
+    display: inline-grid;
+    grid-template-columns: 2ch 1.2em;
+    align-items: center;
+    column-gap: 0.2rem;
+}
+
 .history-place__value {
     font-weight: 700;
+    text-align: right;
 }
 
 .history-place__medal {
-    margin-left: 0.25rem;
     font-size: 0.78rem;
+    text-align: center;
+}
+
+.history-place__medal.is-empty {
+    visibility: hidden;
 }
 
 .history-place__empty {
     color: #94a3b8;
+}
+
+.history-place__loading {
+    color: #8a6f43;
+}
+
+.history-place__error {
+    color: #b42318;
+    font-weight: 700;
 }
 
 .history-footnote {

@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Core\YahooApiClient;
 use RuntimeException;
+use Throwable;
 
 class HistoricalStatsService
 {
@@ -24,6 +25,7 @@ class HistoricalStatsService
      * @return array{
      *   seasons: int[],
      *   last3_seasons: int[],
+    *   season_states: array<int, array{status: string, message: string, expected_teams: int, teams_found: int}>,
      *   rows: array<int, array{
      *     id: string,
      *     team_name: string,
@@ -43,6 +45,7 @@ class HistoricalStatsService
             return [
                 'seasons' => [],
                 'last3_seasons' => [],
+                'season_states' => [],
                 'rows' => [],
             ];
         }
@@ -51,11 +54,41 @@ class HistoricalStatsService
         $seasons = array_values(array_map(static fn(array $l): int => (int) $l['season'], $leagues));
 
         $rowsById = [];
+        $seasonStates = [];
 
         foreach ($leagues as $league) {
             $season = (int) $league['season'];
-            $standingsRaw = $this->api->get('league/' . $league['league_key'] . '/standings');
-            $teams = $this->parseStandings($standingsRaw);
+            $expectedTeams = max(0, (int) ($league['num_teams'] ?? 0));
+
+            try {
+                $standingsRaw = $this->api->get('league/' . $league['league_key'] . '/standings');
+                $teams = $this->parseStandings($standingsRaw);
+            } catch (Throwable $e) {
+                $seasonStates[$season] = [
+                    'status' => 'error',
+                    'message' => $e->getMessage(),
+                    'expected_teams' => $expectedTeams,
+                    'teams_found' => 0,
+                ];
+                continue;
+            }
+
+            $teamsFound = count($teams);
+            if ($expectedTeams > 0 && $teamsFound < $expectedTeams) {
+                $seasonStates[$season] = [
+                    'status' => 'partial',
+                    'message' => 'Yahoo returned partial standings for this season.',
+                    'expected_teams' => $expectedTeams,
+                    'teams_found' => $teamsFound,
+                ];
+            } else {
+                $seasonStates[$season] = [
+                    'status' => 'ok',
+                    'message' => '',
+                    'expected_teams' => $expectedTeams,
+                    'teams_found' => $teamsFound,
+                ];
+            }
 
             foreach ($teams as $team) {
                 $id = $team['identity'];
@@ -123,11 +156,12 @@ class HistoricalStatsService
         return [
             'seasons' => $seasons,
             'last3_seasons' => $last3Seasons,
+            'season_states' => $seasonStates,
             'rows' => $rows,
         ];
     }
 
-    /** @return array<int, array{league_key: string, season: int}> */
+    /** @return array<int, array{league_key: string, season: int, num_teams: int}> */
     private function collectLeagueChain(): array
     {
         $chain = [];
@@ -153,6 +187,7 @@ class HistoricalStatsService
                 $chain[] = [
                     'league_key' => (string) ($meta['league_key'] ?? $key),
                     'season' => $season,
+                    'num_teams' => (int) ($meta['num_teams'] ?? 0),
                 ];
             }
 
@@ -184,6 +219,7 @@ class HistoricalStatsService
             'league_key' => (string) ($meta['league_key'] ?? ''),
             'season' => (string) ($meta['season'] ?? ''),
             'renew' => (string) ($meta['renew'] ?? ''),
+            'num_teams' => (int) ($meta['num_teams'] ?? 0),
         ];
     }
 
