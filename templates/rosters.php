@@ -34,9 +34,6 @@
     <div class="roster-card">
         <div class="roster-card__header">
             <span class="roster-card__team"><?= htmlspecialchars($team['name']) ?></span>
-            <?php if (!empty($team['managers'])): ?>
-                <span class="roster-card__manager"><?= htmlspecialchars(implode(', ', $team['managers'])) ?></span>
-            <?php endif; ?>
         </div>
 
         <?php
@@ -52,11 +49,11 @@
                     <?php foreach ($players as $player): ?>
                         <li class="player-list__item<?= $player['status'] !== '' ? ' player-list__item--injured' : '' ?>">
                             <span class="player-list__name"><?= htmlspecialchars($player['name']) ?></span>
-                            <?php if ($player['nfl_team'] !== ''): ?>
-                                <span class="player-list__nfl-team"><?= htmlspecialchars($player['nfl_team']) ?></span>
-                            <?php endif; ?>
                             <?php if ($player['status'] !== ''): ?>
                                 <span class="player-list__status"><?= htmlspecialchars($player['status']) ?></span>
+                            <?php endif; ?>
+                            <?php if ($player['nfl_team'] !== ''): ?>
+                                <span class="player-list__nfl-team"><?= htmlspecialchars($player['nfl_team']) ?></span>
                             <?php endif; ?>
                         </li>
                     <?php endforeach; ?>
