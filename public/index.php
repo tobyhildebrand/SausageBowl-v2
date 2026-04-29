@@ -212,7 +212,7 @@ try {
 
         case '/draft-board':
             $seasonYear = (int) ($_GET['season'] ?? date('Y'));
-            if ($seasonYear < 2020 || $seasonYear > 2100) {
+            if ($seasonYear < 2018 || $seasonYear > 2100) {
                 $seasonYear = (int) date('Y');
             }
 

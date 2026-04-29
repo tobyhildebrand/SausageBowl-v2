@@ -32,7 +32,7 @@ $histRoundRange = $histRoundCount > 0 ? range(1, $histRoundCount) : [];
         <input type="hidden" name="r" value="draft-board">
         <label class="auth-field">
             <span class="auth-field__label">Season</span>
-            <input class="auth-field__input" type="number" name="season" min="2020" max="2100" value="<?= (int) $seasonYear ?>">
+            <input class="auth-field__input" type="number" name="season" min="2018" max="2100" value="<?= (int) $seasonYear ?>">
         </label>
         <div class="auth-actions">
             <button type="submit" class="btn btn--secondary">Switch Season</button>
