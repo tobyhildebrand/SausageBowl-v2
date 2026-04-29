@@ -314,6 +314,16 @@ try {
                         exit;
                     }
 
+                    if ($action === 'save_drafted_player') {
+                        $playerSeason = (int) ($_POST['season_year'] ?? $seasonYear);
+                        $roundNo = (int) ($_POST['round_no'] ?? 0);
+                        $slotNo = (int) ($_POST['slot_no'] ?? 0);
+                        $playerName = (string) ($_POST['player_name'] ?? '');
+                        $draftDesk->upsertDraftedPlayer($playerSeason, $roundNo, $slotNo, $playerName, $userId);
+                        header('Location: ' . $routeUrl('/comish') . '&season=' . rawurlencode((string) $playerSeason) . '&step=3&notice=drafted_player_saved');
+                        exit;
+                    }
+
                     if ($action === 'add_future_trade') {
                         $tradeSeason = (int) ($_POST['season_year'] ?? $seasonYear);
                         $roundRaw = trim((string) ($_POST['round_no'] ?? ''));

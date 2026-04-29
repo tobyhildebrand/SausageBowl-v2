@@ -24,6 +24,7 @@ $noticeMap = [
     'setup_saved' => 'Upcoming draft setup saved.',
     'override_saved' => 'Pick-owner override saved.',
     'override_deleted' => 'Pick-owner override removed.',
+    'drafted_player_saved' => 'Drafted player updated.',
     'future_trade_added' => 'Future pick trade added to ledger.',
     'future_trade_updated' => 'Future pick trade updated.',
 ];
@@ -264,6 +265,7 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
                                 <?php $isChanged = !empty($cell['is_changed']); ?>
                                 <?php $tradeNote = trim((string) ($cell['note'] ?? '')); ?>
                                 <?php $tradeTitle = $tradeNote !== '' ? $tradeNote : 'Traded pick'; ?>
+                                <?php $draftedPlayer = trim((string) ($cell['drafted_player'] ?? '')); ?>
                                 <td class="<?= $isChanged ? 'draft-cell--changed' : 'draft-cell--default' ?>"<?= $isChanged ? ' title="' . htmlspecialchars($tradeTitle) . '"' : '' ?>>
                                     <?php if ($isChanged): ?>
                                         <?php $owner = (string) ($cell['owner'] ?? ''); ?>
@@ -271,6 +273,15 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
                                     <?php else: ?>
                                         <span class="draft-pick-code"><?= htmlspecialchars(sprintf('%d.%02d', (int) $round, $slotNo)) ?></span>
                                     <?php endif; ?>
+
+                                    <form method="post" action="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=3" class="draft-cell-edit-form">
+                                        <input type="hidden" name="action" value="save_drafted_player">
+                                        <input type="hidden" name="season_year" value="<?= (int) $seasonYear ?>">
+                                        <input type="hidden" name="round_no" value="<?= (int) $round ?>">
+                                        <input type="hidden" name="slot_no" value="<?= (int) $slotNo ?>">
+                                        <input class="draft-cell-edit-form__input" type="text" name="player_name" maxlength="120" value="<?= htmlspecialchars($draftedPlayer) ?>" placeholder="Player name">
+                                        <button class="draft-cell-edit-form__button" type="submit" title="Save player">Save</button>
+                                    </form>
                                 </td>
                             <?php endforeach; ?>
                         </tr>

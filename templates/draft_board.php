@@ -62,12 +62,16 @@ $roundRange = range(1, max(1, $roundCount));
                                 <?php $isChanged = !empty($cell['is_changed']); ?>
                                 <?php $tradeNote = trim((string) ($cell['note'] ?? '')); ?>
                                 <?php $tradeTitle = $tradeNote !== '' ? $tradeNote : 'Traded pick'; ?>
+                                <?php $draftedPlayer = trim((string) ($cell['drafted_player'] ?? '')); ?>
                                 <td class="<?= $isChanged ? 'draft-cell--changed' : 'draft-cell--default' ?>"<?= $isChanged ? ' title="' . htmlspecialchars($tradeTitle) . '"' : '' ?>>
                                     <?php if ($isChanged): ?>
                                         <?php $owner = (string) ($cell['owner'] ?? ''); ?>
                                         <span class="draft-cell-owner"><?= htmlspecialchars($owner) ?></span>
                                     <?php else: ?>
                                         <span class="draft-pick-code"><?= htmlspecialchars(sprintf('%d.%02d', (int) $round, $slotNo)) ?></span>
+                                    <?php endif; ?>
+                                    <?php if ($draftedPlayer !== ''): ?>
+                                        <span class="draft-picked-player"><?= htmlspecialchars($draftedPlayer) ?></span>
                                     <?php endif; ?>
                                 </td>
                             <?php endforeach; ?>

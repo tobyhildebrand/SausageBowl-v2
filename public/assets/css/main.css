@@ -527,6 +527,51 @@ a:hover {
     color: #4a5969;
 }
 
+.draft-picked-player {
+    display: block;
+    margin-top: 0.12rem;
+    font-size: 0.68rem;
+    font-style: italic;
+    color: #5f6c7b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.draft-cell-edit-form {
+    margin-top: 0.2rem;
+    display: grid;
+    gap: 0.2rem;
+}
+
+.draft-cell-edit-form__input {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid #cdbda5;
+    border-radius: 6px;
+    padding: 0.2rem 0.32rem;
+    font: inherit;
+    font-size: 0.68rem;
+    line-height: 1.2;
+    background: #fff;
+}
+
+.draft-cell-edit-form__button {
+    justify-self: end;
+    border: 1px solid #cdbda5;
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #31414f;
+    background: #fff;
+    cursor: pointer;
+}
+
+.draft-cell-edit-form__button:hover {
+    background: #f7f2e6;
+}
+
 @media (max-width: 1100px) {
     .draft-board-table--matrix {
         font-size: 0.78rem;

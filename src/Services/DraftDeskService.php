@@ -67,6 +67,14 @@ class DraftDeskService
         $overridesStmt->execute([':season' => $seasonYear]);
         $overrideRows = $overridesStmt->fetchAll(PDO::FETCH_ASSOC);
 
+        $pickedStmt = $pdo->prepare(
+            'SELECT round_no, slot_no, player_name
+             FROM draft_pick_players
+             WHERE season_year = :season'
+        );
+        $pickedStmt->execute([':season' => $seasonYear]);
+        $pickedRows = $pickedStmt->fetchAll(PDO::FETCH_ASSOC);
+
         $order = [];
         foreach ($orderRows as $row) {
             $order[(int) $row['slot_no']] = (string) $row['team_name'];
@@ -77,6 +85,13 @@ class DraftDeskService
             $round = (int) $row['round_no'];
             $slot = (int) $row['slot_no'];
             $overrideByRoundSlot[$round][$slot] = $row;
+        }
+
+        $pickedByRoundSlot = [];
+        foreach ($pickedRows as $row) {
+            $round = (int) ($row['round_no'] ?? 0);
+            $slot = (int) ($row['slot_no'] ?? 0);
+            $pickedByRoundSlot[$round][$slot] = trim((string) ($row['player_name'] ?? ''));
         }
 
         $boardRows = [];
@@ -96,6 +111,7 @@ class DraftDeskService
                     'is_changed' => $override !== null,
                     'note' => $override !== null ? (string) ($override['note'] ?? '') : '',
                     'override_id' => $override !== null ? (int) $override['id'] : null,
+                    'drafted_player' => (string) ($pickedByRoundSlot[$round][$slotNo] ?? ''),
                 ];
             }
 
@@ -371,6 +387,66 @@ class DraftDeskService
             ':season' => $seasonYear,
             ':round' => $roundNo,
             ':slot' => $slotNo,
+        ]);
+    }
+
+    public function upsertDraftedPlayer(
+        int $seasonYear,
+        int $roundNo,
+        int $slotNo,
+        string $playerName,
+        int $updatedByUserId
+    ): void {
+        $playerName = trim($playerName);
+
+        if ($seasonYear < 2020 || $seasonYear > 2100) {
+            throw new InvalidArgumentException('Season year is out of range.');
+        }
+
+        if ($roundNo <= 0 || $roundNo > 20) {
+            throw new InvalidArgumentException('Round number is invalid.');
+        }
+
+        if ($slotNo <= 0 || $slotNo > 50) {
+            throw new InvalidArgumentException('Slot number is invalid.');
+        }
+
+        if (mb_strlen($playerName) > 120) {
+            throw new InvalidArgumentException('Player name is too long (max 120 chars).');
+        }
+
+        $pdo = DB::get();
+
+        if ($playerName === '') {
+            $deleteStmt = $pdo->prepare(
+                'DELETE FROM draft_pick_players
+                 WHERE season_year = :season AND round_no = :round AND slot_no = :slot'
+            );
+            $deleteStmt->execute([
+                ':season' => $seasonYear,
+                ':round' => $roundNo,
+                ':slot' => $slotNo,
+            ]);
+            return;
+        }
+
+        $stmt = $pdo->prepare(
+            'INSERT INTO draft_pick_players
+                (season_year, round_no, slot_no, player_name, updated_by_user_id)
+             VALUES
+                (:season, :round, :slot, :player_name, :updated_by)
+             ON DUPLICATE KEY UPDATE
+                player_name = VALUES(player_name),
+                updated_by_user_id = VALUES(updated_by_user_id),
+                updated_at = CURRENT_TIMESTAMP'
+        );
+
+        $stmt->execute([
+            ':season' => $seasonYear,
+            ':round' => $roundNo,
+            ':slot' => $slotNo,
+            ':player_name' => $playerName,
+            ':updated_by' => $updatedByUserId,
         ]);
     }
 
