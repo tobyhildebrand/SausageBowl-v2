@@ -20,6 +20,7 @@ use App\Core\YahooApiClient;
 use App\Core\YahooOAuthClient;
 use App\Helpers\View;
 use App\Services\AuthService;
+use App\Services\DraftDeskService;
 use App\Services\HistoricalInsightsService;
 use App\Services\HistoricalPointsService;
 use App\Services\HistoricalStatsService;
@@ -61,6 +62,7 @@ if ($routeFromQuery !== '') {
 }
 
 $auth = new AuthService();
+$draftDesk = new DraftDeskService();
 
 $routeUrl = static function (string $route = '/'): string {
     $route = '/' . trim($route, '/');
@@ -174,8 +176,81 @@ try {
                 exit;
             }
 
+            $seasonYear = (int) ($_GET['season'] ?? date('Y'));
+            if ($seasonYear < 2020 || $seasonYear > 2100) {
+                $seasonYear = (int) date('Y');
+            }
+
+            $draftError = null;
+            $draftNotice = (string) ($_GET['notice'] ?? '');
+
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                $action = (string) ($_POST['action'] ?? '');
+                $user = $auth->currentUser();
+                $userId = (int) ($user['id'] ?? 0);
+
+                try {
+                    if ($action === 'save_upcoming_setup') {
+                        $setupSeason = (int) ($_POST['season_year'] ?? $seasonYear);
+                        $roundCount = (int) ($_POST['round_count'] ?? 8);
+                        $defaultOrderText = (string) ($_POST['default_order_text'] ?? '');
+                        $draftDesk->saveUpcomingSetup($setupSeason, $roundCount, $defaultOrderText);
+                        header('Location: ' . $routeUrl('/comish') . '&season=' . rawurlencode((string) $setupSeason) . '&notice=setup_saved');
+                        exit;
+                    }
+
+                    if ($action === 'save_pick_override') {
+                        $overrideSeason = (int) ($_POST['season_year'] ?? $seasonYear);
+                        $roundNo = (int) ($_POST['round_no'] ?? 0);
+                        $slotNo = (int) ($_POST['slot_no'] ?? 0);
+                        $owner = (string) ($_POST['current_owner_name'] ?? '');
+                        $note = (string) ($_POST['note'] ?? '');
+                        $draftDesk->upsertPickOverride($overrideSeason, $roundNo, $slotNo, $owner, $note, $userId);
+                        header('Location: ' . $routeUrl('/comish') . '&season=' . rawurlencode((string) $overrideSeason) . '&notice=override_saved');
+                        exit;
+                    }
+
+                    if ($action === 'delete_pick_override') {
+                        $overrideSeason = (int) ($_POST['season_year'] ?? $seasonYear);
+                        $roundNo = (int) ($_POST['round_no'] ?? 0);
+                        $slotNo = (int) ($_POST['slot_no'] ?? 0);
+                        $draftDesk->removePickOverride($overrideSeason, $roundNo, $slotNo);
+                        header('Location: ' . $routeUrl('/comish') . '&season=' . rawurlencode((string) $overrideSeason) . '&notice=override_deleted');
+                        exit;
+                    }
+
+                    if ($action === 'add_future_trade') {
+                        $tradeSeason = (int) ($_POST['season_year'] ?? $seasonYear);
+                        $roundRaw = trim((string) ($_POST['round_no'] ?? ''));
+                        $roundNo = $roundRaw === '' ? null : (int) $roundRaw;
+                        $fromTeam = (string) ($_POST['from_team_name'] ?? '');
+                        $owner = (string) ($_POST['current_owner_name'] ?? '');
+                        $note = (string) ($_POST['note'] ?? '');
+                        $draftDesk->addFutureTrade($tradeSeason, $roundNo, $fromTeam, $owner, $note, $userId);
+                        header('Location: ' . $routeUrl('/comish') . '&season=' . rawurlencode((string) $seasonYear) . '&notice=future_trade_added');
+                        exit;
+                    }
+                } catch (Throwable $e) {
+                    $draftError = $e->getMessage();
+                }
+            }
+
+            $upcoming = $draftDesk->getUpcomingSeasonData($seasonYear);
+            $futureTrades = $draftDesk->listFutureTrades($seasonYear + 1);
+
+            $defaultOrderLines = [];
+            foreach (($upcoming['default_order'] ?? []) as $teamName) {
+                $defaultOrderLines[] = (string) $teamName;
+            }
+
             $render('comish', [
                 'title'   => 'Comish',
+                'seasonYear' => $seasonYear,
+                'draftUpcoming' => $upcoming,
+                'futureTrades' => $futureTrades,
+                'defaultOrderText' => implode("\n", $defaultOrderLines),
+                'draftError' => $draftError,
+                'draftNotice' => $draftNotice,
             ]);
             break;
 

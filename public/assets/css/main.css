@@ -375,6 +375,72 @@ a:hover {
     flex-wrap: wrap;
 }
 
+.draft-inline-form {
+    display: flex;
+    align-items: end;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+}
+
+.draft-setup-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.draft-order-text {
+    min-height: 180px;
+    resize: vertical;
+}
+
+.draft-form-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.draft-form-grid--compact {
+    grid-template-columns: repeat(2, minmax(150px, 220px));
+}
+
+.draft-board-wrap {
+    overflow-x: auto;
+}
+
+.draft-board-table th,
+.draft-board-table td {
+    white-space: nowrap;
+}
+
+.draft-cell--default {
+    color: var(--ink-soft);
+}
+
+.draft-cell--changed {
+    font-weight: 700;
+    background: #fff4dc;
+}
+
+.draft-alert {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+.draft-alert p {
+    margin-bottom: 0;
+}
+
+.draft-alert--ok {
+    background: var(--success-bg);
+    border-color: #95d5ac;
+    color: var(--success-ink);
+}
+
+.draft-alert--error {
+    background: #fff1f2;
+    border-color: #fecdd3;
+    color: #9f1239;
+}
+
 /* ============================================================
    Button
    ============================================================ */
