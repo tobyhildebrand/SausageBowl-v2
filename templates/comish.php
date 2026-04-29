@@ -5,10 +5,23 @@ $futureTrades = is_array($futureTrades ?? null) ? $futureTrades : [];
 $defaultOrderText = (string) ($defaultOrderText ?? '');
 $draftError = (string) ($draftError ?? '');
 $draftNotice = (string) ($draftNotice ?? '');
+$wizardStep = (int) ($wizardStep ?? 1);
+if ($wizardStep < 1 || $wizardStep > 3) {
+    $wizardStep = 1;
+}
 
 $roundCount = (int) ($draftUpcoming['round_count'] ?? 8);
 $boardRows = is_array($draftUpcoming['board_rows'] ?? null) ? $draftUpcoming['board_rows'] : [];
+$overrides = is_array($draftUpcoming['overrides'] ?? null) ? $draftUpcoming['overrides'] : [];
 $roundRange = range(1, max(1, $roundCount));
+$defaultTeams = [];
+foreach ($boardRows as $row) {
+    $team = trim((string) ($row['default_team'] ?? ''));
+    if ($team !== '') {
+        $defaultTeams[] = $team;
+    }
+}
+$defaultTeams = array_values(array_unique($defaultTeams));
 
 $noticeMap = [
     'setup_saved' => 'Upcoming draft setup saved.',
@@ -48,10 +61,17 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
 
 <section class="card card--spaced">
     <h2>Upcoming Draft Board (<?= (int) $seasonYear ?>)</h2>
-    <p>Set the default order once, then only override the slots that changed ownership due to trades.</p>
+    <p>Wizard flow: 1) setup default order, 2) enter traded picks, 3) generate visual draft board.</p>
+
+    <div class="draft-wizard-steps" role="tablist" aria-label="Draft setup wizard steps">
+        <a class="draft-wizard-step<?= $wizardStep === 1 ? ' is-active' : '' ?>" href="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=1">1. Setup Order</a>
+        <a class="draft-wizard-step<?= $wizardStep === 2 ? ' is-active' : '' ?>" href="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=2">2. Traded Picks</a>
+        <a class="draft-wizard-step<?= $wizardStep === 3 ? ' is-active' : '' ?>" href="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=3">3. Draft Table</a>
+    </div>
 
     <form method="get" action="/index.php" class="draft-inline-form">
         <input type="hidden" name="r" value="comish">
+        <input type="hidden" name="step" value="<?= (int) $wizardStep ?>">
         <label class="auth-field">
             <span class="auth-field__label">Season</span>
             <input class="auth-field__input" type="number" name="season" min="2020" max="2100" value="<?= (int) $seasonYear ?>">
@@ -61,123 +81,174 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
         </div>
     </form>
 
-    <form method="post" action="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>" class="auth-form card--spaced">
-        <input type="hidden" name="action" value="save_upcoming_setup">
-        <input type="hidden" name="season_year" value="<?= (int) $seasonYear ?>">
+    <?php if ($wizardStep === 1): ?>
+        <form method="post" action="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=1" class="auth-form card--spaced">
+            <input type="hidden" name="action" value="save_upcoming_setup">
+            <input type="hidden" name="season_year" value="<?= (int) $seasonYear ?>">
 
-        <div class="draft-setup-grid">
-            <label class="auth-field">
-                <span class="auth-field__label">Rounds</span>
-                <input class="auth-field__input" type="number" name="round_count" min="1" max="20" value="<?= (int) $roundCount ?>" required>
-            </label>
+            <div class="draft-setup-grid">
+                <label class="auth-field">
+                    <span class="auth-field__label">Rounds</span>
+                    <input class="auth-field__input" type="number" name="round_count" min="1" max="20" value="<?= (int) $roundCount ?>" required>
+                </label>
 
-            <label class="auth-field">
-                <span class="auth-field__label">Default Draft Order (one team per line)</span>
-                <textarea class="auth-field__input draft-order-text" name="default_order_text" rows="8" required><?= htmlspecialchars($defaultOrderText) ?></textarea>
-            </label>
-        </div>
+                <label class="auth-field">
+                    <span class="auth-field__label">Default Draft Order (one team per line)</span>
+                    <textarea class="auth-field__input draft-order-text" name="default_order_text" rows="8" required><?= htmlspecialchars($defaultOrderText) ?></textarea>
+                </label>
+            </div>
 
-        <div class="auth-actions">
-            <button type="submit" class="btn">Save Upcoming Setup</button>
-        </div>
-    </form>
-
-    <div class="draft-board-wrap card--spaced">
+            <div class="auth-actions">
+                <button type="submit" class="btn">Save Step 1</button>
+                <a class="btn btn--secondary" href="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=2">Next: Step 2</a>
+            </div>
+        </form>
+    <?php elseif ($wizardStep === 2): ?>
         <?php if ($boardRows === []): ?>
-            <p class="home-note">No default order configured for <?= (int) $seasonYear ?> yet. Save setup above to render the board.</p>
+            <p class="home-note">No default order configured yet for <?= (int) $seasonYear ?>. Complete step 1 first.</p>
+            <p><a class="btn btn--secondary" href="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=1">Back to Step 1</a></p>
         <?php else: ?>
-            <table class="history-table draft-board-table">
-                <thead>
-                <tr>
-                    <th>Slot</th>
-                    <th>Default Team</th>
-                    <?php foreach ($roundRange as $round): ?>
-                        <th>Round #<?= (int) $round ?></th>
+            <div class="draft-board-wrap card--spaced">
+                <?php if ($overrides === []): ?>
+                    <p class="home-note">No traded picks recorded yet for this draft.</p>
+                <?php else: ?>
+                    <table class="history-table draft-board-table">
+                        <thead>
+                        <tr>
+                            <th>Round</th>
+                            <th>Slot</th>
+                            <th>From Team</th>
+                            <th>Current Owner</th>
+                            <th>Note</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($overrides as $override): ?>
+                            <tr>
+                                <td>#<?= (int) ($override['round_no'] ?? 0) ?></td>
+                                <td><?= (int) ($override['slot_no'] ?? 0) ?></td>
+                                <td><?= htmlspecialchars((string) ($override['from_team_name'] ?? '')) ?></td>
+                                <td><?= htmlspecialchars((string) ($override['current_owner_name'] ?? '')) ?></td>
+                                <td><?= htmlspecialchars((string) ($override['note'] ?? '')) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
+            </div>
+
+            <form method="post" action="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=2" class="auth-form card--spaced">
+                <input type="hidden" name="action" value="save_pick_override">
+                <input type="hidden" name="season_year" value="<?= (int) $seasonYear ?>">
+
+                <h3>Add or Update Traded Pick</h3>
+
+                <div class="draft-form-grid">
+                    <label class="auth-field">
+                        <span class="auth-field__label">Round</span>
+                        <input class="auth-field__input" type="number" name="round_no" min="1" max="20" required>
+                    </label>
+
+                    <label class="auth-field">
+                        <span class="auth-field__label">Slot</span>
+                        <input class="auth-field__input" type="number" name="slot_no" min="1" max="50" required>
+                    </label>
+
+                    <label class="auth-field">
+                        <span class="auth-field__label">Current Owner Team</span>
+                        <input class="auth-field__input" type="text" name="current_owner_name" maxlength="120" list="upcoming-team-options" required>
+                    </label>
+
+                    <label class="auth-field">
+                        <span class="auth-field__label">Note (optional)</span>
+                        <input class="auth-field__input" type="text" name="note" maxlength="255" placeholder="Trade details / reference">
+                    </label>
+                </div>
+
+                <div class="auth-actions">
+                    <button type="submit" class="btn">Save Traded Pick</button>
+                </div>
+            </form>
+
+            <?php if ($defaultTeams !== []): ?>
+                <datalist id="upcoming-team-options">
+                    <?php foreach ($defaultTeams as $teamName): ?>
+                        <option value="<?= htmlspecialchars((string) $teamName) ?>"></option>
                     <?php endforeach; ?>
-                </tr>
-                </thead>
-                <tbody>
-                <?php foreach ($boardRows as $row): ?>
+                </datalist>
+            <?php endif; ?>
+
+            <form method="post" action="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=2" class="auth-form card--spaced">
+                <input type="hidden" name="action" value="delete_pick_override">
+                <input type="hidden" name="season_year" value="<?= (int) $seasonYear ?>">
+
+                <h3>Remove Traded Pick Entry</h3>
+
+                <div class="draft-form-grid draft-form-grid--compact">
+                    <label class="auth-field">
+                        <span class="auth-field__label">Round</span>
+                        <input class="auth-field__input" type="number" name="round_no" min="1" max="20" required>
+                    </label>
+                    <label class="auth-field">
+                        <span class="auth-field__label">Slot</span>
+                        <input class="auth-field__input" type="number" name="slot_no" min="1" max="50" required>
+                    </label>
+                </div>
+
+                <div class="auth-actions">
+                    <button type="submit" class="btn btn--secondary">Delete Entry</button>
+                    <a class="btn" href="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=3">Next: Step 3 Generate Table</a>
+                </div>
+            </form>
+        <?php endif; ?>
+    <?php else: ?>
+        <div class="draft-board-wrap card--spaced">
+            <?php if ($boardRows === []): ?>
+                <p class="home-note">No default order configured for <?= (int) $seasonYear ?> yet. Complete step 1 first.</p>
+            <?php else: ?>
+                <table class="history-table draft-board-table">
+                    <thead>
                     <tr>
-                        <td><?= (int) ($row['slot_no'] ?? 0) ?></td>
-                        <td><?= htmlspecialchars((string) ($row['default_team'] ?? '')) ?></td>
+                        <th>Slot</th>
+                        <th>Default Team</th>
                         <?php foreach ($roundRange as $round): ?>
-                            <?php $cell = $row['rounds'][$round] ?? null; ?>
-                            <td class="<?= !empty($cell['is_changed']) ? 'draft-cell--changed' : 'draft-cell--default' ?>">
-                                <?= htmlspecialchars((string) ($cell['owner'] ?? '')) ?>
-                                <?php if (!empty($cell['is_changed']) && !empty($cell['note'])): ?>
-                                    <span class="insight-sub" title="<?= htmlspecialchars((string) $cell['note']) ?>">(trade)</span>
-                                <?php endif; ?>
-                            </td>
+                            <th>Round #<?= (int) $round ?></th>
                         <?php endforeach; ?>
                     </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
-        <?php endif; ?>
-    </div>
-
-    <form method="post" action="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>" class="auth-form card--spaced">
-        <input type="hidden" name="action" value="save_pick_override">
-        <input type="hidden" name="season_year" value="<?= (int) $seasonYear ?>">
-
-        <h3>Set Pick-Owner Override</h3>
-
-        <div class="draft-form-grid">
-            <label class="auth-field">
-                <span class="auth-field__label">Round</span>
-                <input class="auth-field__input" type="number" name="round_no" min="1" max="20" required>
-            </label>
-
-            <label class="auth-field">
-                <span class="auth-field__label">Slot</span>
-                <input class="auth-field__input" type="number" name="slot_no" min="1" max="50" required>
-            </label>
-
-            <label class="auth-field">
-                <span class="auth-field__label">Current Owner Team</span>
-                <input class="auth-field__input" type="text" name="current_owner_name" maxlength="120" required>
-            </label>
-
-            <label class="auth-field">
-                <span class="auth-field__label">Note (optional)</span>
-                <input class="auth-field__input" type="text" name="note" maxlength="255" placeholder="Trade details / reference">
-            </label>
+                    </thead>
+                    <tbody>
+                    <?php foreach ($boardRows as $row): ?>
+                        <tr>
+                            <td><?= (int) ($row['slot_no'] ?? 0) ?></td>
+                            <td><?= htmlspecialchars((string) ($row['default_team'] ?? '')) ?></td>
+                            <?php foreach ($roundRange as $round): ?>
+                                <?php $cell = $row['rounds'][$round] ?? null; ?>
+                                <td class="<?= !empty($cell['is_changed']) ? 'draft-cell--changed' : 'draft-cell--default' ?>">
+                                    <?= htmlspecialchars((string) ($cell['owner'] ?? '')) ?>
+                                    <?php if (!empty($cell['is_changed']) && !empty($cell['note'])): ?>
+                                        <span class="insight-sub" title="<?= htmlspecialchars((string) $cell['note']) ?>">(trade)</span>
+                                    <?php endif; ?>
+                                </td>
+                            <?php endforeach; ?>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
         </div>
 
-        <div class="auth-actions">
-            <button type="submit" class="btn">Save Override</button>
+        <div class="auth-actions card--spaced">
+            <a class="btn btn--secondary" href="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=1">Back to Step 1</a>
+            <a class="btn btn--secondary" href="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=2">Back to Step 2</a>
         </div>
-    </form>
-
-    <form method="post" action="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>" class="auth-form card--spaced">
-        <input type="hidden" name="action" value="delete_pick_override">
-        <input type="hidden" name="season_year" value="<?= (int) $seasonYear ?>">
-
-        <h3>Remove Override</h3>
-
-        <div class="draft-form-grid draft-form-grid--compact">
-            <label class="auth-field">
-                <span class="auth-field__label">Round</span>
-                <input class="auth-field__input" type="number" name="round_no" min="1" max="20" required>
-            </label>
-            <label class="auth-field">
-                <span class="auth-field__label">Slot</span>
-                <input class="auth-field__input" type="number" name="slot_no" min="1" max="50" required>
-            </label>
-        </div>
-
-        <div class="auth-actions">
-            <button type="submit" class="btn btn--secondary">Delete Override</button>
-        </div>
-    </form>
+    <?php endif; ?>
 </section>
 
 <section class="card card--spaced">
     <h2>Future Draft Pick Trades (<?= (int) ($seasonYear + 1) ?>+)</h2>
     <p>For seasons where default order is unknown, track only traded picks in this ledger.</p>
 
-    <form method="post" action="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>" class="auth-form">
+    <form method="post" action="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=<?= (int) $wizardStep ?>" class="auth-form">
         <input type="hidden" name="action" value="add_future_trade">
 
         <div class="draft-form-grid">
@@ -193,12 +264,12 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
 
             <label class="auth-field">
                 <span class="auth-field__label">From Team</span>
-                <input class="auth-field__input" type="text" name="from_team_name" maxlength="120" required>
+                <input class="auth-field__input" type="text" name="from_team_name" maxlength="120" list="upcoming-team-options" required>
             </label>
 
             <label class="auth-field">
                 <span class="auth-field__label">Current Owner</span>
-                <input class="auth-field__input" type="text" name="current_owner_name" maxlength="120" required>
+                <input class="auth-field__input" type="text" name="current_owner_name" maxlength="120" list="upcoming-team-options" required>
             </label>
 
             <label class="auth-field">

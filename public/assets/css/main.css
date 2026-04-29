@@ -382,6 +382,37 @@ a:hover {
     flex-wrap: wrap;
 }
 
+.draft-wizard-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+}
+
+.draft-wizard-step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 1px solid var(--brand-line);
+    background: #fff;
+    color: var(--ink-soft);
+    padding: 0.35rem 0.8rem;
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+.draft-wizard-step.is-active {
+    color: #fff;
+    background: linear-gradient(180deg, #df4035 0%, #bd2f25 100%);
+    border-color: #b72f25;
+}
+
+.draft-wizard-step:hover {
+    text-decoration: none;
+    border-color: var(--brand-red);
+}
+
 .draft-setup-grid {
     display: grid;
     gap: 1rem;

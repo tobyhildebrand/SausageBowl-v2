@@ -181,6 +181,11 @@ try {
                 $seasonYear = (int) date('Y');
             }
 
+            $wizardStep = (int) ($_GET['step'] ?? 1);
+            if ($wizardStep < 1 || $wizardStep > 3) {
+                $wizardStep = 1;
+            }
+
             $draftError = null;
             $draftNotice = (string) ($_GET['notice'] ?? '');
 
@@ -195,7 +200,7 @@ try {
                         $roundCount = (int) ($_POST['round_count'] ?? 8);
                         $defaultOrderText = (string) ($_POST['default_order_text'] ?? '');
                         $draftDesk->saveUpcomingSetup($setupSeason, $roundCount, $defaultOrderText);
-                        header('Location: ' . $routeUrl('/comish') . '&season=' . rawurlencode((string) $setupSeason) . '&notice=setup_saved');
+                        header('Location: ' . $routeUrl('/comish') . '&season=' . rawurlencode((string) $setupSeason) . '&step=2&notice=setup_saved');
                         exit;
                     }
 
@@ -206,7 +211,7 @@ try {
                         $owner = (string) ($_POST['current_owner_name'] ?? '');
                         $note = (string) ($_POST['note'] ?? '');
                         $draftDesk->upsertPickOverride($overrideSeason, $roundNo, $slotNo, $owner, $note, $userId);
-                        header('Location: ' . $routeUrl('/comish') . '&season=' . rawurlencode((string) $overrideSeason) . '&notice=override_saved');
+                        header('Location: ' . $routeUrl('/comish') . '&season=' . rawurlencode((string) $overrideSeason) . '&step=2&notice=override_saved');
                         exit;
                     }
 
@@ -215,7 +220,7 @@ try {
                         $roundNo = (int) ($_POST['round_no'] ?? 0);
                         $slotNo = (int) ($_POST['slot_no'] ?? 0);
                         $draftDesk->removePickOverride($overrideSeason, $roundNo, $slotNo);
-                        header('Location: ' . $routeUrl('/comish') . '&season=' . rawurlencode((string) $overrideSeason) . '&notice=override_deleted');
+                        header('Location: ' . $routeUrl('/comish') . '&season=' . rawurlencode((string) $overrideSeason) . '&step=2&notice=override_deleted');
                         exit;
                     }
 
@@ -227,7 +232,7 @@ try {
                         $owner = (string) ($_POST['current_owner_name'] ?? '');
                         $note = (string) ($_POST['note'] ?? '');
                         $draftDesk->addFutureTrade($tradeSeason, $roundNo, $fromTeam, $owner, $note, $userId);
-                        header('Location: ' . $routeUrl('/comish') . '&season=' . rawurlencode((string) $seasonYear) . '&notice=future_trade_added');
+                        header('Location: ' . $routeUrl('/comish') . '&season=' . rawurlencode((string) $seasonYear) . '&step=' . rawurlencode((string) $wizardStep) . '&notice=future_trade_added');
                         exit;
                     }
                 } catch (Throwable $e) {
@@ -251,6 +256,7 @@ try {
                 'defaultOrderText' => implode("\n", $defaultOrderLines),
                 'draftError' => $draftError,
                 'draftNotice' => $draftNotice,
+                'wizardStep' => $wizardStep,
             ]);
             break;
 
