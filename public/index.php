@@ -247,6 +247,7 @@ try {
 
             $draftError = null;
             $draftNotice = (string) ($_GET['notice'] ?? '');
+            $editingFutureTradeId = (int) ($_GET['edit_future_trade_id'] ?? 0);
             $leagueTeamNames = [];
 
             try {
@@ -379,6 +380,7 @@ try {
                 'futureTrades' => $futureTrades,
                 'draftError' => $draftError,
                 'draftNotice' => $draftNotice,
+                'editingFutureTradeId' => $editingFutureTradeId,
                 'wizardStep' => $wizardStep,
                 'leagueTeamNames' => $leagueTeamNames,
             ]);

@@ -4,6 +4,7 @@ $draftUpcoming = is_array($draftUpcoming ?? null) ? $draftUpcoming : [];
 $futureTrades = is_array($futureTrades ?? null) ? $futureTrades : [];
 $draftError = (string) ($draftError ?? '');
 $draftNotice = (string) ($draftNotice ?? '');
+$editingFutureTradeId = (int) ($editingFutureTradeId ?? 0);
 $wizardStep = (int) ($wizardStep ?? 1);
 if ($wizardStep < 1 || $wizardStep > 3) {
     $wizardStep = 1;
@@ -255,16 +256,18 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
                     <?php foreach ($boardRows as $row): ?>
                         <tr>
                             <td><?= (int) ($row['slot_no'] ?? 0) ?></td>
-                            <td><?= htmlspecialchars((string) ($row['default_team'] ?? '')) ?></td>
+                            <?php $defaultTeam = (string) ($row['default_team'] ?? ''); ?>
+                            <td><span class="draft-cell-owner" title="<?= htmlspecialchars($defaultTeam) ?>"><?= htmlspecialchars($defaultTeam) ?></span></td>
                             <?php foreach ($roundRange as $round): ?>
                                 <?php $cell = $row['rounds'][$round] ?? null; ?>
                                 <?php $isChanged = !empty($cell['is_changed']); ?>
                                 <?php $tradeNote = trim((string) ($cell['note'] ?? '')); ?>
                                 <?php $tradeTitle = $tradeNote !== '' ? $tradeNote : 'Traded pick'; ?>
                                 <td class="<?= $isChanged ? 'draft-cell--changed' : 'draft-cell--default' ?>"<?= $isChanged ? ' title="' . htmlspecialchars($tradeTitle) . '"' : '' ?>>
-                                    <?= htmlspecialchars((string) ($cell['owner'] ?? '')) ?>
+                                    <?php $owner = (string) ($cell['owner'] ?? ''); ?>
+                                    <span class="draft-cell-owner" title="<?= htmlspecialchars($owner) ?>"><?= htmlspecialchars($owner) ?></span>
                                     <?php if ($isChanged): ?>
-                                        <span class="insight-sub" title="<?= htmlspecialchars($tradeTitle) ?>">(trade)</span>
+                                        <span class="insight-sub draft-trade-flag" title="<?= htmlspecialchars($tradeTitle) ?>">(trade)</span>
                                     <?php endif; ?>
                                 </td>
                             <?php endforeach; ?>
@@ -435,13 +438,10 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
         </div>
     </form>
 
-    <div class="draft-board-wrap card--spaced">
+    <div class="draft-board-wrap card--spaced" id="future-trades-table">
         <?php if ($futureTrades === []): ?>
             <p class="home-note">No future trades logged yet.</p>
         <?php else: ?>
-            <form method="post" action="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=<?= (int) $wizardStep ?>">
-                <input type="hidden" name="action" value="update_future_trade">
-
             <table class="history-table draft-board-table">
                 <thead>
                 <tr>
@@ -457,53 +457,101 @@ $noticeText = $noticeMap[$draftNotice] ?? '';
                 <tbody>
                 <?php foreach ($futureTrades as $trade): ?>
                     <?php $tradeId = (int) ($trade['id'] ?? 0); ?>
+                    <?php $isEditing = $tradeId > 0 && $tradeId === $editingFutureTradeId; ?>
                     <tr>
-                        <td>
-                            <input class="auth-field__input" type="number" name="season_year[<?= (int) $tradeId ?>]" min="2020" max="2100" required value="<?= (int) ($trade['season_year'] ?? 0) ?>">
-                        </td>
+                        <td><?= (int) ($trade['season_year'] ?? 0) ?></td>
                         <td>
                             <?php if (isset($trade['round_no']) && $trade['round_no'] !== null): ?>
-                                <input class="auth-field__input" type="number" name="round_no[<?= (int) $tradeId ?>]" min="1" max="20" value="<?= (int) $trade['round_no'] ?>" placeholder="TBD">
+                                #<?= (int) $trade['round_no'] ?>
                             <?php else: ?>
-                                <input class="auth-field__input" type="number" name="round_no[<?= (int) $tradeId ?>]" min="1" max="20" value="" placeholder="TBD">
+                                <span class="history-place__empty">TBD</span>
                             <?php endif; ?>
                         </td>
-                        <td>
-                            <?php if ($leagueTeamNames !== []): ?>
-                                <select class="auth-field__input" name="from_team_name[<?= (int) $tradeId ?>]" required>
-                                    <option value="">Choose team</option>
-                                    <?php foreach ($leagueTeamNames as $teamName): ?>
-                                        <option value="<?= htmlspecialchars((string) $teamName) ?>"<?= strcasecmp((string) $teamName, (string) ($trade['from_team_name'] ?? '')) === 0 ? ' selected' : '' ?>><?= htmlspecialchars((string) $teamName) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            <?php else: ?>
-                                <input class="auth-field__input" type="text" name="from_team_name[<?= (int) $tradeId ?>]" maxlength="120" required value="<?= htmlspecialchars((string) ($trade['from_team_name'] ?? '')) ?>">
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <?php if ($leagueTeamNames !== []): ?>
-                                <select class="auth-field__input" name="current_owner_name[<?= (int) $tradeId ?>]" required>
-                                    <option value="">Choose team</option>
-                                    <?php foreach ($leagueTeamNames as $teamName): ?>
-                                        <option value="<?= htmlspecialchars((string) $teamName) ?>"<?= strcasecmp((string) $teamName, (string) ($trade['current_owner_name'] ?? '')) === 0 ? ' selected' : '' ?>><?= htmlspecialchars((string) $teamName) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            <?php else: ?>
-                                <input class="auth-field__input" type="text" name="current_owner_name[<?= (int) $tradeId ?>]" maxlength="120" required value="<?= htmlspecialchars((string) ($trade['current_owner_name'] ?? '')) ?>">
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <input class="auth-field__input" type="text" name="note[<?= (int) $tradeId ?>]" maxlength="255" value="<?= htmlspecialchars((string) ($trade['note'] ?? '')) ?>" placeholder="Trade context">
-                        </td>
+                        <td><?= htmlspecialchars((string) ($trade['from_team_name'] ?? '')) ?></td>
+                        <td><?= htmlspecialchars((string) ($trade['current_owner_name'] ?? '')) ?></td>
+                        <td><?= htmlspecialchars((string) ($trade['note'] ?? '')) ?></td>
                         <td><?= htmlspecialchars((string) ($trade['created_at'] ?? '')) ?></td>
                         <td>
-                            <button class="btn btn--secondary" type="submit" name="trade_id" value="<?= (int) $tradeId ?>">Update</button>
+                            <?php if ($isEditing): ?>
+                                <a class="btn btn--secondary" href="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=<?= (int) $wizardStep ?>#future-trades-table">Cancel</a>
+                            <?php else: ?>
+                                <a class="btn btn--secondary" href="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=<?= (int) $wizardStep ?>&amp;edit_future_trade_id=<?= (int) $tradeId ?>#future-trades-table">Edit</a>
+                            <?php endif; ?>
                         </td>
                     </tr>
+                    <?php if ($isEditing): ?>
+                        <?php $fromCurrent = (string) ($trade['from_team_name'] ?? ''); ?>
+                        <?php $ownerCurrent = (string) ($trade['current_owner_name'] ?? ''); ?>
+                        <?php $fromInList = false; ?>
+                        <?php $ownerInList = false; ?>
+                        <?php foreach ($leagueTeamNames as $teamName): ?>
+                            <?php if (strcasecmp((string) $teamName, $fromCurrent) === 0) { $fromInList = true; } ?>
+                            <?php if (strcasecmp((string) $teamName, $ownerCurrent) === 0) { $ownerInList = true; } ?>
+                        <?php endforeach; ?>
+                        <tr>
+                            <td colspan="7">
+                                <form method="post" action="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=<?= (int) $wizardStep ?>" class="auth-form">
+                                    <input type="hidden" name="action" value="update_future_trade">
+                                    <input type="hidden" name="trade_id" value="<?= (int) $tradeId ?>">
+
+                                    <div class="draft-form-grid">
+                                        <label class="auth-field">
+                                            <span class="auth-field__label">Season</span>
+                                            <input class="auth-field__input" type="number" name="season_year" min="2020" max="2100" required value="<?= (int) ($trade['season_year'] ?? 0) ?>">
+                                        </label>
+                                        <label class="auth-field">
+                                            <span class="auth-field__label">Round (optional)</span>
+                                            <input class="auth-field__input" type="number" name="round_no" min="1" max="20" value="<?= isset($trade['round_no']) && $trade['round_no'] !== null ? (int) $trade['round_no'] : '' ?>" placeholder="Unknown yet">
+                                        </label>
+                                        <label class="auth-field">
+                                            <span class="auth-field__label">Pick Originally Owned By</span>
+                                            <?php if ($leagueTeamNames !== []): ?>
+                                                <select class="auth-field__input" name="from_team_name" required>
+                                                    <?php if (!$fromInList): ?>
+                                                        <option value="<?= htmlspecialchars($fromCurrent) ?>" selected><?= htmlspecialchars($fromCurrent) ?> (current)</option>
+                                                    <?php endif; ?>
+                                                    <option value="">Choose team</option>
+                                                    <?php foreach ($leagueTeamNames as $teamName): ?>
+                                                        <option value="<?= htmlspecialchars((string) $teamName) ?>"<?= strcasecmp((string) $teamName, $fromCurrent) === 0 ? ' selected' : '' ?>><?= htmlspecialchars((string) $teamName) ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            <?php else: ?>
+                                                <input class="auth-field__input" type="text" name="from_team_name" maxlength="120" required value="<?= htmlspecialchars($fromCurrent) ?>">
+                                            <?php endif; ?>
+                                        </label>
+                                        <label class="auth-field">
+                                            <span class="auth-field__label">Current Owner</span>
+                                            <?php if ($leagueTeamNames !== []): ?>
+                                                <select class="auth-field__input" name="current_owner_name" required>
+                                                    <?php if (!$ownerInList): ?>
+                                                        <option value="<?= htmlspecialchars($ownerCurrent) ?>" selected><?= htmlspecialchars($ownerCurrent) ?> (current)</option>
+                                                    <?php endif; ?>
+                                                    <option value="">Choose team</option>
+                                                    <?php foreach ($leagueTeamNames as $teamName): ?>
+                                                        <option value="<?= htmlspecialchars((string) $teamName) ?>"<?= strcasecmp((string) $teamName, $ownerCurrent) === 0 ? ' selected' : '' ?>><?= htmlspecialchars((string) $teamName) ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            <?php else: ?>
+                                                <input class="auth-field__input" type="text" name="current_owner_name" maxlength="120" required value="<?= htmlspecialchars($ownerCurrent) ?>">
+                                            <?php endif; ?>
+                                        </label>
+                                        <label class="auth-field">
+                                            <span class="auth-field__label">Note (optional)</span>
+                                            <input class="auth-field__input" type="text" name="note" maxlength="255" value="<?= htmlspecialchars((string) ($trade['note'] ?? '')) ?>" placeholder="Trade context">
+                                        </label>
+                                    </div>
+
+                                    <div class="auth-actions">
+                                        <button class="btn" type="submit">Save Update</button>
+                                        <a class="btn btn--secondary" href="/index.php?r=comish&amp;season=<?= (int) $seasonYear ?>&amp;step=<?= (int) $wizardStep ?>#future-trades-table">Cancel</a>
+                                    </div>
+                                </form>
+                            </td>
+                        </tr>
+                    <?php endif; ?>
                 <?php endforeach; ?>
                 </tbody>
             </table>
-            </form>
         <?php endif; ?>
     </div>
 </section>
