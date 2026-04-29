@@ -1,3 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;800&family=Source+Sans+3:wght@400;600;700&display=swap');
+
+:root {
+    --bg: #f6f3eb;
+    --bg-strong: #ece6d8;
+    --surface: #fffdf8;
+    --surface-2: #f9f5eb;
+    --ink: #101418;
+    --ink-soft: #55606e;
+    --brand-dark: #11181f;
+    --brand-red: #cb342a;
+    --brand-red-dark: #a82920;
+    --brand-sausage: #d7853a;
+    --brand-line: #d6cbb7;
+    --success-bg: #ecfdf3;
+    --success-ink: #166534;
+    --warn-bg: #fff6e8;
+    --warn-ink: #92400e;
+}
+
 /* ============================================================
    Base reset & typography
    ============================================================ */
@@ -8,15 +28,18 @@
 }
 
 body {
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family: 'Source Sans 3', sans-serif;
     font-size: 1rem;
     line-height: 1.6;
-    background: #f4f4f4;
-    color: #1a1a1a;
+    background:
+        radial-gradient(circle at 18% 2%, rgba(215, 133, 58, 0.13), transparent 38%),
+        radial-gradient(circle at 90% 12%, rgba(203, 52, 42, 0.12), transparent 34%),
+        var(--bg);
+    color: var(--ink);
 }
 
 a {
-    color: #2563eb;
+    color: var(--brand-red);
     text-decoration: none;
 }
 
@@ -28,54 +51,122 @@ a:hover {
    Layout
    ============================================================ */
 .site-header {
-    background: #1e3a5f;
+    background: linear-gradient(112deg, var(--brand-dark) 0%, #161f27 72%, #202a35 100%);
     color: #fff;
-    padding: 0.75rem 1.5rem;
+    border-bottom: 4px solid var(--brand-red);
+}
+
+.site-header__inner {
+    width: min(1220px, 100% - 2rem);
+    margin: 0 auto;
+    padding: 0.85rem 0;
     display: flex;
     align-items: center;
-    gap: 2rem;
+    justify-content: space-between;
+    gap: 1.25rem;
+}
+
+.site-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    color: #fff;
+}
+
+.site-brand:hover {
+    text-decoration: none;
+}
+
+.site-brand__logo {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.38);
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.site-brand__text {
+    display: inline-flex;
+    flex-direction: column;
+    line-height: 1.1;
 }
 
 .site-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #fff;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+
+.site-subtitle {
+    margin-top: 0.15rem;
+    color: #f1dfc8;
+    font-size: 0.82rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.site-nav {
+    display: flex;
+    gap: 0.55rem;
+    flex-wrap: wrap;
 }
 
 .site-nav a {
-    color: #cbd5e1;
-    margin-right: 1rem;
+    color: #f5eee1;
+    border: 1px solid rgba(245, 238, 225, 0.28);
+    border-radius: 999px;
+    padding: 0.35rem 0.95rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    transition: all 0.16s ease;
 }
 
 .site-nav a:hover {
+    background: var(--brand-red);
+    border-color: var(--brand-red);
     color: #fff;
+    text-decoration: none;
+}
+
+.site-nav a.is-active,
+.site-nav a[aria-current='page'] {
+    background: linear-gradient(180deg, #df4035 0%, #bd2f25 100%);
+    border-color: rgba(255, 255, 255, 0.58);
+    color: #fff;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22) inset;
 }
 
 .site-main {
-    max-width: 1100px;
+    max-width: 1220px;
     margin: 2rem auto;
     padding: 0 1.5rem;
 }
 
 .site-footer {
     text-align: center;
-    padding: 1.5rem;
+    padding: 2rem 1.5rem;
     font-size: 0.875rem;
-    color: #6b7280;
+    color: var(--ink-soft);
 }
 
 /* ============================================================
    Home page
    ============================================================ */
 .home-hero {
-    background: #fff;
-    border-radius: 8px;
+    background: linear-gradient(165deg, #fffefb 0%, var(--surface-2) 100%);
+    border-radius: 16px;
+    border: 1px solid var(--brand-line);
     padding: 2rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 12px 30px rgba(16, 20, 24, 0.06);
 }
 
 .home-hero h1 {
-    font-size: 1.75rem;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2.1rem;
+    letter-spacing: 0.01em;
     margin-bottom: 0.5rem;
 }
 
@@ -91,14 +182,16 @@ a:hover {
    Generic card
    ============================================================ */
 .card {
-    background: #fff;
-    border-radius: 8px;
+    background: linear-gradient(165deg, #fffefb 0%, var(--surface-2) 100%);
+    border-radius: 14px;
+    border: 1px solid var(--brand-line);
     padding: 2rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 12px 30px rgba(16, 20, 24, 0.06);
 }
 
 .card h1 {
-    font-size: 1.5rem;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.95rem;
     margin-bottom: 0.75rem;
 }
 
@@ -111,16 +204,19 @@ a:hover {
    ============================================================ */
 .btn {
     display: inline-block;
-    background: #2563eb;
+    background: linear-gradient(180deg, var(--brand-red) 0%, var(--brand-red-dark) 100%);
     color: #fff;
-    padding: 0.5rem 1.25rem;
-    border-radius: 6px;
+    padding: 0.56rem 1.25rem;
+    border-radius: 999px;
     font-weight: 600;
+    border: 1px solid rgba(16, 20, 24, 0.3);
     text-decoration: none;
+    box-shadow: 0 6px 16px rgba(203, 52, 42, 0.33);
 }
 
 .btn:hover {
-    background: #1d4ed8;
+    background: linear-gradient(180deg, #df4035 0%, #bd2f25 100%);
+    transform: translateY(-1px);
     text-decoration: none;
 }
 
@@ -139,43 +235,44 @@ a:hover {
 }
 
 .page-header h1 {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: #1e3a5f;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--brand-dark);
 }
 
 .league-status-badge {
     display: inline-block;
-    padding: 0.2rem 0.55rem;
+    padding: 0.22rem 0.64rem;
     border-radius: 999px;
-    border: 1px solid #94a3b8;
-    background: #f8fafc;
-    color: #334155;
+    border: 1px solid #a8b2bf;
+    background: #f6f8fb;
+    color: #3c4654;
     font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.04em;
 }
 
 .league-status-badge--predraft {
-    border-color: #fbbf24;
-    background: #fffbeb;
-    color: #92400e;
+    border-color: #f0b36a;
+    background: var(--warn-bg);
+    color: var(--warn-ink);
 }
 
 .league-status-badge--postdraft,
 .league-status-badge--inseason,
 .league-status-badge--active {
-    border-color: #86efac;
-    background: #f0fdf4;
-    color: #166534;
+    border-color: #95d5ac;
+    background: var(--success-bg);
+    color: var(--success-ink);
 }
 
 .roster-notice {
     margin-bottom: 1rem;
     padding: 0.8rem 1rem;
-    border: 1px solid #93c5fd;
-    background: #eff6ff;
-    color: #1e3a8a;
+    border: 1px solid #f0b36a;
+    background: var(--warn-bg);
+    color: var(--warn-ink);
     border-radius: 0.5rem;
     font-size: 0.92rem;
 }
@@ -190,17 +287,18 @@ a:hover {
 }
 
 .roster-card {
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.5rem;
+    background: var(--surface);
+    border: 1px solid var(--brand-line);
+    border-radius: 0.85rem;
     overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0,0,0,.07);
+    box-shadow: 0 12px 26px rgba(16, 20, 24, 0.07);
 }
 
 .roster-card__header {
-    background: #1e3a5f;
+    background: linear-gradient(135deg, var(--brand-dark), #1b252f);
     color: #fff;
-    padding: 0.75rem 1rem;
+    padding: 0.82rem 1rem;
+    border-bottom: 2px solid var(--brand-red);
 }
 
 .roster-card__team {
@@ -213,13 +311,13 @@ a:hover {
 .roster-card__manager {
     display: block;
     font-size: 0.8rem;
-    opacity: 0.75;
+    color: #f2e4cc;
     margin-top: 0.15rem;
 }
 
 .roster-card__empty {
     padding: 1rem;
-    color: #6b7280;
+    color: var(--ink-soft);
     font-size: 0.875rem;
 }
 
@@ -227,7 +325,7 @@ a:hover {
    Position groups inside a roster card
    ============================================================ */
 .position-group {
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid #e8dfcf;
 }
 
 .position-group__label {
@@ -241,14 +339,14 @@ a:hover {
 }
 
 /* Position colour coding */
-.position-group__label--qb  { background: #b91c1c; }
-.position-group__label--rb  { background: #15803d; }
-.position-group__label--wr  { background: #1d4ed8; }
-.position-group__label--te  { background: #b45309; }
-.position-group__label--k   { background: #6b21a8; }
-.position-group__label--def { background: #0f766e; }
-.position-group__label--bn  { background: #64748b; }
-.position-group__label--ir  { background: #374151; }
+.position-group__label--qb  { background: #9e231b; }
+.position-group__label--rb  { background: #18603a; }
+.position-group__label--wr  { background: #224f94; }
+.position-group__label--te  { background: #a25c1f; }
+.position-group__label--k   { background: #6f2e8f; }
+.position-group__label--def { background: #16635a; }
+.position-group__label--bn  { background: #6c5f4c; }
+.position-group__label--ir  { background: #3a3f45; }
 
 /* ============================================================
    Player list
@@ -265,7 +363,7 @@ a:hover {
     padding: 0.25rem 1rem;
     font-size: 0.85rem;
     line-height: 1.4;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid #efe6d8;
 }
 
 .player-list__item:last-child {
@@ -273,25 +371,45 @@ a:hover {
 }
 
 .player-list__item--injured .player-list__name {
-    color: #6b7280;
+    color: #7a5c43;
 }
 
 .player-list__name {
     flex: 1;
-    color: #1e293b;
+    color: #1f2937;
 }
 
 .player-list__nfl-team {
     font-size: 0.7rem;
     font-weight: 600;
-    color: #64748b;
+    color: #6b7280;
     white-space: nowrap;
 }
 
 .player-list__status {
     font-size: 0.68rem;
     font-weight: 700;
-    color: #b91c1c;
+    color: var(--brand-red);
     white-space: nowrap;
 }
 
+@media (max-width: 760px) {
+    .site-header__inner {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 0.9rem 0;
+    }
+
+    .site-brand__logo {
+        width: 52px;
+        height: 52px;
+    }
+
+    .site-title {
+        font-size: 1.66rem;
+    }
+
+    .site-nav {
+        width: 100%;
+    }
+}
