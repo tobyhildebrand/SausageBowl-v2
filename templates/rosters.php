@@ -1,6 +1,33 @@
 <section class="page-header">
-    <h1>League Rosters</h1>
+    <div class="page-header__row">
+        <h1>League Rosters</h1>
+        <?php
+            $statusLabel = strtoupper((string)($league['draft_status'] ?? 'unknown'));
+            $statusClass = strtolower((string)($league['draft_status'] ?? 'unknown'));
+        ?>
+        <span class="league-status-badge league-status-badge--<?= htmlspecialchars($statusClass) ?>">
+            <?= htmlspecialchars($statusLabel) ?>
+        </span>
+    </div>
 </section>
+
+<?php
+    $draftStatus = strtolower((string)($league['draft_status'] ?? ''));
+    $isPreDraft = $draftStatus === 'predraft';
+    $usedFallback = (bool)($league['used_fallback'] ?? false);
+?>
+
+<?php if ($isPreDraft): ?>
+    <div class="roster-notice">
+        <?php if ($usedFallback): ?>
+            Yahoo reports this league as pre-draft, so live roster data is empty.
+            Showing carry-over rosters from the renewed previous season league instead.
+        <?php else: ?>
+            Yahoo currently reports this league as pre-draft, so roster player lists are still empty.
+            They will populate automatically after the draft.
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
 
 <div class="roster-grid">
 <?php foreach ($teams as $team): ?>
@@ -38,7 +65,9 @@
         <?php endforeach; ?>
 
         <?php if (empty($team['players'])): ?>
-            <p class="roster-card__empty">No players on roster.</p>
+            <p class="roster-card__empty">
+                <?= $isPreDraft ? 'Rosters unlock after draft.' : 'No players on roster.' ?>
+            </p>
         <?php endif; ?>
     </div>
 <?php endforeach; ?>

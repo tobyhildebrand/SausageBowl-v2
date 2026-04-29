@@ -63,6 +63,45 @@ class RosterService
     }
 
     /**
+     * Fetch roster data including league-level metadata useful for UI state.
+     *
+     * @return array{teams: array<int, array<string, mixed>>, league: array<string, mixed>}
+     */
+    public function getRosterOverview(): array
+    {
+        $raw = $this->api->get("league/{$this->leagueKey}/teams/roster/players");
+        $leagueMeta = $this->parseLeagueMeta($raw);
+        $teams = $this->parseRosters($raw);
+
+        $usedFallbackLeagueKey = null;
+        if ($this->areAllTeamsEmpty($teams) && strtolower((string) ($leagueMeta['draft_status'] ?? '')) === 'predraft') {
+            $renewedLeagueKey = $this->buildRenewedLeagueKey((string) ($leagueMeta['renew'] ?? ''));
+            if ($renewedLeagueKey !== null) {
+                $fallbackRaw = $this->api->get("league/{$renewedLeagueKey}/teams/roster/players");
+                $fallbackTeams = $this->parseRosters($fallbackRaw);
+
+                if (!$this->areAllTeamsEmpty($fallbackTeams)) {
+                    $teams = $fallbackTeams;
+                    $usedFallbackLeagueKey = $renewedLeagueKey;
+                }
+            }
+        }
+
+        return [
+            'teams'  => $teams,
+            'league' => [
+                'league_key'           => (string) ($leagueMeta['league_key'] ?? ''),
+                'name'                 => (string) ($leagueMeta['name'] ?? ''),
+                'season'               => (string) ($leagueMeta['season'] ?? ''),
+                'draft_status'         => (string) ($leagueMeta['draft_status'] ?? ''),
+                'current_week'         => (string) ($leagueMeta['current_week'] ?? ''),
+                'used_fallback'        => $usedFallbackLeagueKey !== null,
+                'fallback_league_key'  => (string) ($usedFallbackLeagueKey ?? ''),
+            ],
+        ];
+    }
+
+    /**
      * Given a flat player list, group players by their primary position.
      * Order follows POSITION_ORDER; unknown positions appear at the end.
      */
@@ -132,6 +171,54 @@ class RosterService
         usort($teams, fn($a, $b) => strcmp($a['name'], $b['name']));
 
         return $teams;
+    }
+
+    private function parseLeagueMeta(array $raw): array
+    {
+        $meta = $raw['fantasy_content']['league'][0] ?? [];
+
+        if (!is_array($meta)) {
+            return [];
+        }
+
+        return [
+            'league_key'   => (string) ($meta['league_key'] ?? ''),
+            'name'         => (string) ($meta['name'] ?? ''),
+            'season'       => (string) ($meta['season'] ?? ''),
+            'draft_status' => (string) ($meta['draft_status'] ?? ''),
+            'current_week' => (string) ($meta['current_week'] ?? ''),
+            'renew'        => (string) ($meta['renew'] ?? ''),
+        ];
+    }
+
+    private function areAllTeamsEmpty(array $teams): bool
+    {
+        if ($teams === []) {
+            return true;
+        }
+
+        foreach ($teams as $team) {
+            if (!empty($team['players'])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function buildRenewedLeagueKey(string $renewValue): ?string
+    {
+        // Yahoo renew format: "<game_id>_<league_id>" (example: 461_45436)
+        if ($renewValue === '' || strpos($renewValue, '_') === false) {
+            return null;
+        }
+
+        [$gameId, $leagueId] = explode('_', $renewValue, 2);
+        if ($gameId === '' || $leagueId === '') {
+            return null;
+        }
+
+        return $gameId . '.l.' . $leagueId;
     }
 
     private function parseTeam(array $teamData): ?array
