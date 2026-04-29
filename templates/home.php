@@ -7,5 +7,5 @@
         <a class="btn btn--secondary" href="/index.php?r=rosters">View Rosters</a>
         <a class="btn btn--secondary" href="/index.php?r=comish">Commissioner Tools</a>
     </div>
-    <p class="home-note">League data sync and admin controls live in the Comish section.</p>
+    <p class="home-note">League data sync and commissioner actions now sit behind DB-backed login in the Comish section.</p>
 </section>

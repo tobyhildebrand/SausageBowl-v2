@@ -139,6 +139,46 @@ a:hover {
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22) inset;
 }
 
+.site-account {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.site-account__user {
+    color: #f1dfc8;
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.site-account__form {
+    margin: 0;
+}
+
+.site-account__link,
+.site-account__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 1px solid rgba(245, 238, 225, 0.28);
+    padding: 0.35rem 0.95rem;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #f5eee1;
+    background: transparent;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.site-account__link:hover,
+.site-account__button:hover {
+    background: rgba(255, 255, 255, 0.08);
+    text-decoration: none;
+}
+
 .site-main {
     max-width: 1220px;
     margin: 2rem auto;
@@ -277,6 +317,64 @@ a:hover {
     margin-bottom: 1rem;
 }
 
+.card--spaced {
+    margin-top: 1.5rem;
+}
+
+.auth-card {
+    max-width: 560px;
+}
+
+.auth-alert {
+    margin-bottom: 1rem;
+    border-radius: 10px;
+    padding: 0.8rem 1rem;
+    font-weight: 600;
+}
+
+.auth-alert--error {
+    background: #fff1f2;
+    border: 1px solid #fecdd3;
+    color: #9f1239;
+}
+
+.auth-form {
+    display: grid;
+    gap: 1rem;
+}
+
+.auth-field {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.auth-field__label {
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: var(--brand-dark);
+}
+
+.auth-field__input {
+    width: 100%;
+    border: 1px solid var(--brand-line);
+    border-radius: 10px;
+    padding: 0.75rem 0.9rem;
+    font: inherit;
+    background: #fff;
+    color: var(--ink);
+}
+
+.auth-field__input:focus {
+    outline: 2px solid rgba(203, 52, 42, 0.18);
+    border-color: var(--brand-red);
+}
+
+.auth-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
 /* ============================================================
    Button
    ============================================================ */
@@ -287,9 +385,11 @@ a:hover {
     padding: 0.56rem 1.25rem;
     border-radius: 999px;
     font-weight: 600;
+    font: inherit;
     border: 1px solid rgba(16, 20, 24, 0.3);
     text-decoration: none;
     box-shadow: 0 6px 16px rgba(203, 52, 42, 0.33);
+    cursor: pointer;
 }
 
 .btn--secondary {

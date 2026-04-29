@@ -49,6 +49,19 @@ $isComishActive = $currentRoute === '/comish';
                 <a href="/index.php?r=history" class="<?= $isHistoryActive ? 'is-active' : '' ?>" aria-current="<?= $isHistoryActive ? 'page' : 'false' ?>">History</a>
                 <a href="/index.php?r=comish" class="<?= $isComishActive ? 'is-active' : '' ?>" aria-current="<?= $isComishActive ? 'page' : 'false' ?>">Comish</a>
             </nav>
+
+            <div class="site-account">
+                <?php if (!empty($currentUser)): ?>
+                    <span class="site-account__user">
+                        <?= htmlspecialchars((string) ($currentUser['display_name'] ?? $currentUser['email'] ?? 'User')) ?>
+                    </span>
+                    <form method="post" action="/index.php?r=logout" class="site-account__form">
+                        <button type="submit" class="site-account__button">Logout</button>
+                    </form>
+                <?php else: ?>
+                    <a href="/index.php?r=login" class="site-account__link">Login</a>
+                <?php endif; ?>
+            </div>
         </div>
     </header>
 

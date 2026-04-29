@@ -24,3 +24,22 @@ CREATE TABLE app_settings (
     updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (setting_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- users: application users for commissioner/admin access.
+-- Passwords are stored as PHP password_hash() outputs.
+-- ---------------------------------------------------------------------------
+DROP TABLE IF EXISTS users;
+CREATE TABLE users (
+    id            BIGINT UNSIGNED                     NOT NULL AUTO_INCREMENT,
+    email         VARCHAR(190)                        NOT NULL,
+    display_name  VARCHAR(100)                        NOT NULL,
+    password_hash VARCHAR(255)                        NOT NULL,
+    role          ENUM('commissioner', 'manager', 'viewer') NOT NULL DEFAULT 'viewer',
+    is_active     TINYINT(1)                          NOT NULL DEFAULT 1,
+    last_login_at DATETIME                            NULL,
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uniq_users_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

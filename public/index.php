@@ -19,6 +19,7 @@ require APP_ROOT . '/vendor/autoload.php';
 use App\Core\YahooApiClient;
 use App\Core\YahooOAuthClient;
 use App\Helpers\View;
+use App\Services\AuthService;
 use App\Services\HistoricalInsightsService;
 use App\Services\HistoricalPointsService;
 use App\Services\HistoricalStatsService;
@@ -59,20 +60,122 @@ if ($routeFromQuery !== '') {
     }
 }
 
+$auth = new AuthService();
+
+$routeUrl = static function (string $route = '/'): string {
+    $route = '/' . trim($route, '/');
+
+    if ($route === '/') {
+        return '/index.php';
+    }
+
+    return '/index.php?r=' . ltrim($route, '/');
+};
+
+$normalizeRedirectRoute = static function (?string $route): string {
+    $route = '/' . trim((string) $route, '/');
+
+    if ($route === '/' || $route === '') {
+        return '/comish';
+    }
+
+    if (!preg_match('#^/[a-z0-9/_-]+$#i', $route)) {
+        return '/comish';
+    }
+
+    return $route;
+};
+
+$render = static function (string $template, array $vars = []) use ($config, $auth): void {
+    $vars += [
+        'appName' => $config['app']['name'],
+        'currentUser' => $auth->currentUser(),
+    ];
+
+    View::render($template, $vars);
+};
+
 try {
     switch ($uri) {
         case '/':
-            View::render('home', [
+            $render('home', [
                 'title'      => 'Home',
-                'appName'    => $config['app']['name'],
                 'leagueSize' => $config['app']['league_size'],
             ]);
             break;
 
+        case '/login':
+            $hasUsers = $auth->hasAnyUsers();
+            $redirectRoute = $normalizeRedirectRoute($_GET['redirect'] ?? $_POST['redirect'] ?? '/comish');
+            $error = null;
+
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                $action = (string) ($_POST['action'] ?? 'login');
+
+                if ($action === 'bootstrap' && !$hasUsers) {
+                    $displayName = trim((string) ($_POST['display_name'] ?? ''));
+                    $email = trim((string) ($_POST['email'] ?? ''));
+                    $password = (string) ($_POST['password'] ?? '');
+                    $passwordConfirm = (string) ($_POST['password_confirm'] ?? '');
+
+                    if ($password !== $passwordConfirm) {
+                        $error = 'Passwords do not match.';
+                    } else {
+                        try {
+                            $auth->createInitialCommissioner($displayName, $email, $password);
+                            $auth->login($email, $password);
+                            header('Location: ' . $routeUrl($redirectRoute));
+                            exit;
+                        } catch (Throwable $e) {
+                            $error = $e->getMessage();
+                        }
+                    }
+                } elseif ($action === 'login' && $hasUsers) {
+                    $email = trim((string) ($_POST['email'] ?? ''));
+                    $password = (string) ($_POST['password'] ?? '');
+
+                    if ($auth->login($email, $password)) {
+                        header('Location: ' . $routeUrl($redirectRoute));
+                        exit;
+                    }
+
+                    $error = 'Invalid email or password.';
+                }
+            } elseif ($auth->isCommissioner()) {
+                header('Location: ' . $routeUrl($redirectRoute));
+                exit;
+            }
+
+            $render('login', [
+                'title' => $hasUsers ? 'Login' : 'Set Up Commissioner Account',
+                'hasUsers' => $hasUsers,
+                'redirectRoute' => $redirectRoute,
+                'error' => $error,
+            ]);
+            break;
+
+        case '/logout':
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                $auth->logout();
+            }
+
+            header('Location: ' . $routeUrl('/'));
+            exit;
+
         case '/comish':
-            View::render('comish', [
+            if ($auth->isLoggedIn() && !$auth->isCommissioner()) {
+                http_response_code(403);
+                echo 'Commissioner access required.';
+                exit;
+            }
+
+            if (!$auth->isCommissioner()) {
+                header('Location: ' . $routeUrl('/login') . '&redirect=' . rawurlencode('/comish'));
+                exit;
+            }
+
+            $render('comish', [
                 'title'   => 'Comish',
-                'appName' => $config['app']['name'],
             ]);
             break;
 
@@ -81,12 +184,34 @@ try {
         // ------------------------------------------------------------------
 
         case '/yahoo/connect':
+            if ($auth->isLoggedIn() && !$auth->isCommissioner()) {
+                http_response_code(403);
+                echo 'Commissioner access required.';
+                exit;
+            }
+
+            if (!$auth->isCommissioner()) {
+                header('Location: ' . $routeUrl('/login') . '&redirect=' . rawurlencode('/comish'));
+                exit;
+            }
+
             // Initiate the OAuth dance – redirects the admin to Yahoo.
             $oauth = new YahooOAuthClient($config['yahoo']);
             header('Location: ' . $oauth->getAuthUrl());
             exit;
 
         case '/yahoo/callback':
+            if ($auth->isLoggedIn() && !$auth->isCommissioner()) {
+                http_response_code(403);
+                echo 'Commissioner access required.';
+                exit;
+            }
+
+            if (!$auth->isCommissioner()) {
+                header('Location: ' . $routeUrl('/login') . '&redirect=' . rawurlencode('/comish'));
+                exit;
+            }
+
             // Yahoo redirects back here with ?code=…&state=…
             $code  = $_GET['code']  ?? '';
             $state = $_GET['state'] ?? '';
@@ -100,9 +225,8 @@ try {
             $oauth = new YahooOAuthClient($config['yahoo']);
             $oauth->handleCallback($code, $state);
 
-            View::render('yahoo_connect', [
+            $render('yahoo_connect', [
                 'title'   => 'Yahoo Connected',
-                'appName' => $config['app']['name'],
                 'success' => true,
             ]);
             break;
@@ -112,9 +236,8 @@ try {
             $apiClient = new YahooApiClient($oauth);
             $rosterService = new RosterService($apiClient, $config['yahoo']['league_key']);
             $overview = $rosterService->getRosterOverview();
-            View::render('rosters', [
+            $render('rosters', [
                 'title'   => 'Rosters',
-                'appName' => $config['app']['name'],
                 'teams'   => $overview['teams'],
                 'league'  => $overview['league'],
             ]);
@@ -130,9 +253,8 @@ try {
             $points = $pointsService->getHistoricalPoints();
             $insights = $insightsService->getInsights($history, $points);
 
-            View::render('historical', [
+            $render('historical', [
                 'title'   => 'Historical Stats',
-                'appName' => $config['app']['name'],
                 'history' => $history,
                 'points'  => $points,
                 'insights' => $insights,
@@ -141,9 +263,8 @@ try {
 
         default:
             http_response_code(404);
-            View::render('home', [
+            $render('home', [
                 'title'      => '404 – Not Found',
-                'appName'    => $config['app']['name'],
                 'leagueSize' => $config['app']['league_size'],
             ]);
     }

@@ -2,7 +2,7 @@
     <div class="page-header__row">
         <h1>Comish</h1>
     </div>
-    <p>Commissioner tools and league maintenance live here.</p>
+    <p>Commissioner-only tools and league maintenance live here.</p>
 </section>
 
 <section class="card">
@@ -13,8 +13,8 @@
     </p>
 </section>
 
-<section class="card" style="margin-top: 1.5rem;">
-    <h2>Security Roadmap</h2>
-    <p>This section will be locked down properly with database-backed users, roles, and commissioner-only access.</p>
-    <p>For now, it is only separated from the public home page so the admin action is not promoted to every visitor.</p>
+<section class="card card--spaced">
+    <h2>Access Model</h2>
+    <p>Comish access now uses DB-backed users with hashed passwords and role-based commissioner checks.</p>
+    <p>The first account created through the login setup flow becomes the commissioner account for this site.</p>
 </section>
