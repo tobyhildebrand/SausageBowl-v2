@@ -15,6 +15,40 @@
     $draftStatus = strtolower((string)($league['draft_status'] ?? ''));
     $isPreDraft = $draftStatus === 'predraft';
     $usedFallback = (bool)($league['used_fallback'] ?? false);
+
+    // Build position-aligned groups so each position section has identical
+    // height across all team cards for easier cross-team comparison.
+    $positionOrder = App\Services\RosterService::POSITION_ORDER;
+    $teamGroups = [];
+    $maxByPosition = [];
+    $extraPositions = [];
+
+    foreach ($teams as $teamIndex => $team) {
+        $grouped = App\Services\RosterService::groupByPosition($team['players']);
+        $teamGroups[$teamIndex] = $grouped;
+
+        foreach ($grouped as $position => $playersAtPosition) {
+            if (!in_array($position, $positionOrder, true) && !in_array($position, $extraPositions, true)) {
+                $extraPositions[] = $position;
+            }
+
+            $count = count($playersAtPosition);
+            $maxByPosition[$position] = max((int) ($maxByPosition[$position] ?? 0), $count);
+        }
+    }
+
+    $displayPositions = [];
+    foreach ($positionOrder as $position) {
+        if ((int) ($maxByPosition[$position] ?? 0) > 0) {
+            $displayPositions[] = $position;
+        }
+    }
+
+    foreach ($extraPositions as $position) {
+        if ((int) ($maxByPosition[$position] ?? 0) > 0) {
+            $displayPositions[] = $position;
+        }
+    }
 ?>
 
 <?php if ($isPreDraft): ?>
@@ -30,17 +64,18 @@
 <?php endif; ?>
 
 <div class="roster-grid">
-<?php foreach ($teams as $team): ?>
+<?php foreach ($teams as $teamIndex => $team): ?>
     <div class="roster-card">
         <div class="roster-card__header">
             <span class="roster-card__team"><?= htmlspecialchars($team['name']) ?></span>
         </div>
 
-        <?php
-            $grouped = App\Services\RosterService::groupByPosition($team['players']);
-        ?>
-
-        <?php foreach ($grouped as $position => $players): ?>
+        <?php foreach ($displayPositions as $position): ?>
+            <?php
+                $players = $teamGroups[$teamIndex][$position] ?? [];
+                $maxSlotsForPosition = (int) ($maxByPosition[$position] ?? count($players));
+                $placeholderCount = max(0, $maxSlotsForPosition - count($players));
+            ?>
             <div class="position-group">
                 <div class="position-group__label position-group__label--<?= strtolower(htmlspecialchars($position)) ?>">
                     <?= htmlspecialchars($position) ?>
@@ -57,11 +92,17 @@
                             <?php endif; ?>
                         </li>
                     <?php endforeach; ?>
+
+                    <?php for ($i = 0; $i < $placeholderCount; $i++): ?>
+                        <li class="player-list__item player-list__item--placeholder" aria-hidden="true">
+                            <span class="player-list__name">&nbsp;</span>
+                        </li>
+                    <?php endfor; ?>
                 </ul>
             </div>
         <?php endforeach; ?>
 
-        <?php if (empty($team['players'])): ?>
+        <?php if (empty($team['players']) && empty($displayPositions)): ?>
             <p class="roster-card__empty">
                 <?= $isPreDraft ? 'Rosters unlock after draft.' : 'No players on roster.' ?>
             </p>

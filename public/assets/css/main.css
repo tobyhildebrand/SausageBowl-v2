@@ -374,6 +374,17 @@ a:hover {
     color: #7a5c43;
 }
 
+.player-list__item--placeholder {
+    min-height: 1.72rem;
+    background: rgba(214, 203, 183, 0.22);
+}
+
+.player-list__item--placeholder .player-list__name,
+.player-list__item--placeholder .player-list__status,
+.player-list__item--placeholder .player-list__nfl-team {
+    visibility: hidden;
+}
+
 .player-list__name {
     flex: 1;
     color: #1f2937;
