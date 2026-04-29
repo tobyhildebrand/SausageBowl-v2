@@ -19,6 +19,7 @@ require APP_ROOT . '/vendor/autoload.php';
 use App\Core\YahooApiClient;
 use App\Core\YahooOAuthClient;
 use App\Helpers\View;
+use App\Services\HistoricalStatsService;
 use App\Services\RosterService;
 
 // Load app config (used for display values; DB connection is lazy via DB::get())
@@ -107,6 +108,19 @@ try {
                 'appName' => $config['app']['name'],
                 'teams'   => $overview['teams'],
                 'league'  => $overview['league'],
+            ]);
+            break;
+
+        case '/history':
+            $oauth = new YahooOAuthClient($config['yahoo']);
+            $apiClient = new YahooApiClient($oauth);
+            $historyService = new HistoricalStatsService($apiClient, $config['yahoo']['league_key'], 2018);
+            $history = $historyService->getHistoricalStandings();
+
+            View::render('historical', [
+                'title'   => 'Historical Stats',
+                'appName' => $config['app']['name'],
+                'history' => $history,
             ]);
             break;
 

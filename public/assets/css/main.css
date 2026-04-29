@@ -420,6 +420,111 @@ a:hover {
     white-space: nowrap;
 }
 
+/* ============================================================
+   Historical table
+   ============================================================ */
+.history-subtitle {
+    margin: -0.8rem 0 1rem;
+    color: var(--ink-soft);
+}
+
+.history-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--brand-line);
+    border-radius: 0.85rem;
+    background: var(--surface);
+    box-shadow: 0 12px 26px rgba(16, 20, 24, 0.06);
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 860px;
+}
+
+.history-table thead th {
+    background: linear-gradient(135deg, #295f50, #234e42);
+    color: #fff;
+    font-size: 0.84rem;
+    font-weight: 700;
+    text-align: center;
+    padding: 0.6rem 0.55rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.history-table thead th:first-child {
+    text-align: left;
+    min-width: 220px;
+}
+
+.history-table thead th.is-sorted-asc,
+.history-table thead th.is-sorted-desc {
+    background: linear-gradient(135deg, #2f6f5d, #2a604f);
+}
+
+.history-table thead th.is-sorted-asc::after {
+    content: ' \2191';
+}
+
+.history-table thead th.is-sorted-desc::after {
+    content: ' \2193';
+}
+
+.history-table tbody td {
+    padding: 0.45rem 0.55rem;
+    border-top: 1px solid #eee2d2;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.history-table tbody tr:nth-child(even) {
+    background: rgba(236, 230, 216, 0.35);
+}
+
+.history-team {
+    text-align: left;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.history-team__logo {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid #cdbda5;
+    flex: 0 0 auto;
+}
+
+.history-place {
+    white-space: nowrap;
+}
+
+.history-place__value {
+    font-weight: 700;
+}
+
+.history-place__medal {
+    margin-left: 0.25rem;
+    font-size: 0.78rem;
+}
+
+.history-place__empty {
+    color: #94a3b8;
+}
+
+.history-footnote {
+    margin-top: 0.6rem;
+    font-size: 0.84rem;
+    color: var(--ink-soft);
+}
+
 @media (max-width: 760px) {
     .site-header__inner {
         flex-direction: column;
