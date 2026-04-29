@@ -531,8 +531,8 @@ a:hover {
     display: block;
     margin-top: 0.12rem;
     font-size: 0.68rem;
-    font-style: italic;
-    color: #5f6c7b;
+    font-style: normal;
+    color: #2c3e50;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
