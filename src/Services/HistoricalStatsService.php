@@ -338,7 +338,7 @@ class HistoricalStatsService
     }
 
     /**
-     * @return array<int, array{identity: string, name: string, logo_url: string, rank: int}>
+     * @return array<int, array{identity: string, name: string, logo_url: string, rank: int, wins: int, losses: int, draws: int}>
      */
     private function parseStandings(array $raw): array
     {
@@ -409,10 +409,14 @@ class HistoricalStatsService
                 continue;
             }
 
-            $outcomeTotals = $teamData[1]['team_standings']['outcome_totals'] ?? [];
-            $wins  = isset($outcomeTotals['wins'])   && is_numeric($outcomeTotals['wins'])   ? (int) $outcomeTotals['wins']   : 0;
-            $losses = isset($outcomeTotals['losses']) && is_numeric($outcomeTotals['losses']) ? (int) $outcomeTotals['losses'] : 0;
-            $draws  = isset($outcomeTotals['ties'])   && is_numeric($outcomeTotals['ties'])   ? (int) $outcomeTotals['ties']   : 0;
+            $teamStandings = isset($teamData[1]['team_standings']) && is_array($teamData[1]['team_standings'])
+                ? $teamData[1]['team_standings']
+                : $teamData;
+            $wins = $this->findFirstNumericByKey($teamStandings, 'wins') ?? 0;
+            $losses = $this->findFirstNumericByKey($teamStandings, 'losses') ?? 0;
+            $draws = $this->findFirstNumericByKey($teamStandings, 'ties')
+                ?? $this->findFirstNumericByKey($teamStandings, 'draws')
+                ?? 0;
 
             $identity = $guid !== ''
                 ? 'guid:' . $guid
@@ -448,6 +452,51 @@ class HistoricalStatsService
         }
 
         return $flat;
+    }
+
+    private function findFirstNumericByKey(array $node, string $targetKey): ?int
+    {
+        foreach ($node as $key => $value) {
+            if ($key === $targetKey) {
+                if (is_numeric($value)) {
+                    return (int) $value;
+                }
+
+                if (is_array($value)) {
+                    $nested = $this->findFirstNumericValue($value);
+                    if ($nested !== null) {
+                        return $nested;
+                    }
+                }
+            }
+
+            if (is_array($value)) {
+                $found = $this->findFirstNumericByKey($value, $targetKey);
+                if ($found !== null) {
+                    return $found;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function findFirstNumericValue(array $node): ?int
+    {
+        foreach ($node as $value) {
+            if (is_numeric($value)) {
+                return (int) $value;
+            }
+
+            if (is_array($value)) {
+                $found = $this->findFirstNumericValue($value);
+                if ($found !== null) {
+                    return $found;
+                }
+            }
+        }
+
+        return null;
     }
 
     private function findFirstNumericRank(array $node): ?int
