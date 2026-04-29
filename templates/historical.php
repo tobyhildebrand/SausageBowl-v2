@@ -151,6 +151,7 @@ foreach ($pointSeasons as $season) {
                 <?php endforeach; ?>
                 <th data-sort="avg" data-type="number">Average Place</th>
                 <th data-sort="trend" data-type="number">Trend (L3Y)</th>
+                <th data-sort="wld" data-type="string" title="All-time regular-season record">Overall W-L-D</th>
             </tr>
             </thead>
             <tbody>
@@ -168,6 +169,7 @@ foreach ($pointSeasons as $season) {
                             $place = $row['places'][(int) $season] ?? null;
                             $medal = $medalForPlace(is_int($place) ? $place : null);
                             $state = $seasonStates[(int) $season]['status'] ?? 'ok';
+                            $seasonWld = $row['wld'][(int) $season] ?? null;
                         ?>
                         <td class="history-place" data-sort-value="<?= $place ?? 99 ?>">
                             <?php if ($place !== null): ?>
@@ -177,6 +179,9 @@ foreach ($pointSeasons as $season) {
                                         <?= $medal !== '' ? $medal : '•' ?>
                                     </span>
                                 </span>
+                                <?php if ($seasonWld !== null): ?>
+                                    <span class="history-place__wld"><?= (int) $seasonWld['w'] ?>-<?= (int) $seasonWld['l'] ?><?= (int) $seasonWld['d'] > 0 ? '-' . (int) $seasonWld['d'] : '' ?></span>
+                                <?php endif; ?>
                             <?php else: ?>
                                 <?php if ($state === 'error'): ?>
                                     <span class="history-place__error" title="Season data unavailable from Yahoo">⚠</span>
@@ -195,6 +200,19 @@ foreach ($pointSeasons as $season) {
 
                     <td class="history-place" data-sort-value="<?= $row['trend_l3y'] ?? 99 ?>">
                         <?= htmlspecialchars($formatAverage(isset($row['trend_l3y']) ? (float) $row['trend_l3y'] : null)) ?>
+                    </td>
+                    <?php
+                        $tw = (int) ($row['total_wins'] ?? 0);
+                        $tl = (int) ($row['total_losses'] ?? 0);
+                        $td = (int) ($row['total_draws'] ?? 0);
+                        $tGames = $tw + $tl + $td;
+                        $winPct = $tGames > 0 ? round($tw / $tGames * 100) : null;
+                    ?>
+                    <td class="history-place history-place--wld" data-sort-value="<?= $winPct ?? -1 ?>">
+                        <span class="history-wld"><?= $tw ?>-<?= $tl ?><?= $td > 0 ? '-' . $td : '' ?></span>
+                        <?php if ($winPct !== null): ?>
+                            <span class="insight-sub"><?= $winPct ?>%</span>
+                        <?php endif; ?>
                     </td>
                 </tr>
             <?php endforeach; ?>

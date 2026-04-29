@@ -131,6 +131,7 @@ class HistoricalStatsService
                         'first_seen_season' => $season,
                         'last_seen_season' => $season,
                         'places' => [],
+                        'wld' => [],
                     ];
                 }
 
@@ -141,6 +142,11 @@ class HistoricalStatsService
                 }
 
                 $rowsById[$id]['places'][$season] = (int) $team['rank'];
+                $rowsById[$id]['wld'][$season] = [
+                    'w' => (int) ($team['wins'] ?? 0),
+                    'l' => (int) ($team['losses'] ?? 0),
+                    'd' => (int) ($team['draws'] ?? 0),
+                ];
             }
         }
 
@@ -210,6 +216,10 @@ class HistoricalStatsService
                 'logo_url' => (string) $row['logo_url'],
                 'seasons_played' => count($all),
                 'places' => $places,
+                'wld' => $row['wld'] ?? [],
+                'total_wins' => (int) array_sum(array_column($row['wld'] ?? [], 'w')),
+                'total_losses' => (int) array_sum(array_column($row['wld'] ?? [], 'l')),
+                'total_draws' => (int) array_sum(array_column($row['wld'] ?? [], 'd')),
                 'average_place' => $averagePlace,
                 'trend_l3y' => $trendL3y,
             ];
@@ -399,6 +409,11 @@ class HistoricalStatsService
                 continue;
             }
 
+            $outcomeTotals = $teamData[1]['team_standings']['outcome_totals'] ?? [];
+            $wins  = isset($outcomeTotals['wins'])   && is_numeric($outcomeTotals['wins'])   ? (int) $outcomeTotals['wins']   : 0;
+            $losses = isset($outcomeTotals['losses']) && is_numeric($outcomeTotals['losses']) ? (int) $outcomeTotals['losses'] : 0;
+            $draws  = isset($outcomeTotals['ties'])   && is_numeric($outcomeTotals['ties'])   ? (int) $outcomeTotals['ties']   : 0;
+
             $identity = $guid !== ''
                 ? 'guid:' . $guid
                 : 'name:' . $this->normalizeName($name);
@@ -408,6 +423,9 @@ class HistoricalStatsService
                 'name' => $name,
                 'logo_url' => $logoUrl,
                 'rank' => $rank,
+                'wins' => $wins,
+                'losses' => $losses,
+                'draws' => $draws,
             ];
         }
 

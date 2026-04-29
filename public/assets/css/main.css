@@ -679,6 +679,23 @@ a:hover {
     visibility: hidden;
 }
 
+.history-place__wld {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    letter-spacing: 0.01em;
+    margin-top: 0.1rem;
+}
+
+.history-place--wld {
+    white-space: nowrap;
+}
+
+.history-wld {
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
 .history-place__empty {
     color: #94a3b8;
 }
