@@ -66,9 +66,6 @@ $roundRange = range(1, max(1, $roundCount));
                                     <?php if ($isChanged): ?>
                                         <?php $owner = (string) ($cell['owner'] ?? ''); ?>
                                         <span class="draft-cell-owner"><?= htmlspecialchars($owner) ?></span>
-                                        <span class="insight-sub draft-trade-flag">
-                                            <?= htmlspecialchars($tradeNote !== '' ? $tradeNote : '(traded)') ?>
-                                        </span>
                                     <?php else: ?>
                                         <span class="draft-pick-code"><?= htmlspecialchars(sprintf('%d.%02d', (int) $round, $slotNo)) ?></span>
                                     <?php endif; ?>

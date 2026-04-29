@@ -506,16 +506,6 @@ a:hover {
     vertical-align: middle;
 }
 
-.draft-board-table--matrix .draft-trade-flag {
-    display: block;
-    margin-top: 0.08rem;
-    font-size: 0.68rem;
-    color: #5f6c7b;
-    font-style: italic;
-    font-weight: 500;
-    cursor: help;
-}
-
 .draft-board-table--matrix .draft-cell--changed {
     cursor: help;
     white-space: normal;
