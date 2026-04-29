@@ -38,7 +38,6 @@ return [
         'name'        => 'NowItGoesAroundTheSausage',
         'league_size' => 12,
         'debug'       => filter_var(getenv('APP_DEBUG') ?: 'false', FILTER_VALIDATE_BOOLEAN),
-        'commissioner_key' => getenv('APP_COMMISSIONER_KEY') ?: '',
     ],
     'yahoo' => [
         'client_id'     => $requireEnv('YAHOO_CLIENT_ID'),

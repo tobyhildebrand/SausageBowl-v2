@@ -30,15 +30,6 @@ $config = require APP_ROOT . '/config/config.php';
 // Session is needed for the Yahoo OAuth CSRF state parameter.
 session_start();
 
-$commissionerKey = trim((string) ($config['app']['commissioner_key'] ?? ''));
-$commissionerParam = isset($_GET['commissioner']) ? trim((string) $_GET['commissioner']) : '';
-
-if ($commissionerKey !== '' && $commissionerParam !== '' && hash_equals($commissionerKey, $commissionerParam)) {
-    $_SESSION['is_commissioner'] = true;
-}
-
-$isCommissioner = $commissionerKey === '' || !empty($_SESSION['is_commissioner']);
-
 // Enable error display in debug mode only.
 if ($config['app']['debug']) {
     ini_set('display_errors', '1');
@@ -75,7 +66,13 @@ try {
                 'title'      => 'Home',
                 'appName'    => $config['app']['name'],
                 'leagueSize' => $config['app']['league_size'],
-                'isCommissioner' => $isCommissioner,
+            ]);
+            break;
+
+        case '/comish':
+            View::render('comish', [
+                'title'   => 'Comish',
+                'appName' => $config['app']['name'],
             ]);
             break;
 
@@ -84,12 +81,6 @@ try {
         // ------------------------------------------------------------------
 
         case '/yahoo/connect':
-            if (!$isCommissioner) {
-                http_response_code(403);
-                echo 'Commissioner access required.';
-                exit;
-            }
-
             // Initiate the OAuth dance – redirects the admin to Yahoo.
             $oauth = new YahooOAuthClient($config['yahoo']);
             header('Location: ' . $oauth->getAuthUrl());

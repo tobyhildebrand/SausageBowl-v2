@@ -5,11 +5,7 @@
     <div class="home-actions">
         <a class="btn btn--secondary" href="/index.php?r=history">Explore History</a>
         <a class="btn btn--secondary" href="/index.php?r=rosters">View Rosters</a>
-        <?php if (!empty($isCommissioner)): ?>
-            <a class="btn" href="/index.php?r=yahoo/connect">Connect Yahoo League</a>
-        <?php endif; ?>
+        <a class="btn btn--secondary" href="/index.php?r=comish">Commissioner Tools</a>
     </div>
-    <?php if (!empty($isCommissioner)): ?>
-        <p class="home-note">Commissioner mode is active. Yahoo sync controls are visible only in this session.</p>
-    <?php endif; ?>
+    <p class="home-note">League data sync and admin controls live in the Comish section.</p>
 </section>
