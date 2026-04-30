@@ -76,12 +76,15 @@ class RosterService
         $teams = $this->parseRosters($raw);
 
         $usedFallbackLeagueKey = null;
-        if ($this->areAllTeamsEmpty($teams) && strtolower((string) ($leagueMeta['draft_status'] ?? '')) === 'predraft') {
+        if (strtolower((string) ($leagueMeta['draft_status'] ?? '')) === 'predraft') {
             $renewedLeagueKey = $this->buildRenewedLeagueKey((string) ($leagueMeta['renew'] ?? ''));
             if ($renewedLeagueKey !== null) {
                 $fallbackRaw = $this->api->get("league/{$renewedLeagueKey}/teams/roster/players");
                 $fallbackTeams = $this->parseRosters($fallbackRaw);
 
+                // During predraft, prefer previous-season carry-over rosters when available.
+                // Yahoo can return transitional rosters in the renewed league that don't yet
+                // reflect late previous-season transactions consistently.
                 if (!$this->areAllTeamsEmpty($fallbackTeams)) {
                     $teams = $fallbackTeams;
                     $usedFallbackLeagueKey = $renewedLeagueKey;
