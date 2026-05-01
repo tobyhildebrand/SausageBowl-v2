@@ -60,6 +60,11 @@
             Yahoo currently reports this league as pre-draft, so roster player lists are still empty.
             They will populate automatically after the draft.
         <?php endif; ?>
+        <br>
+        Source league: <?= htmlspecialchars((string) ($league['league_key'] ?? '')) ?>
+        (season <?= htmlspecialchars((string) ($league['season'] ?? '')) ?>),
+        configured: <?= htmlspecialchars((string) ($league['configured_league_key'] ?? '')) ?>
+        (season <?= htmlspecialchars((string) ($league['configured_season'] ?? '')) ?>)
     </div>
 <?php endif; ?>
 

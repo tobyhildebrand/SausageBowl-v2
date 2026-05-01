@@ -74,6 +74,7 @@ class RosterService
     {
         $raw = $this->fetchRosterPayload($this->leagueKey);
         $leagueMeta = $this->parseLeagueMeta($raw);
+        $sourceLeagueMeta = $leagueMeta;
         $teams = $this->parseRosters($raw);
 
         $usedFallbackLeagueKey = null;
@@ -81,10 +82,12 @@ class RosterService
             $renewedLeagueKey = $this->buildRenewedLeagueKey((string) ($leagueMeta['renew'] ?? ''));
             if ($renewedLeagueKey !== null) {
                 $fallbackRaw = $this->fetchRosterPayload($renewedLeagueKey);
+                $fallbackMeta = $this->parseLeagueMeta($fallbackRaw);
                 $fallbackTeams = $this->parseRosters($fallbackRaw);
 
                 if (!$this->areAllTeamsEmpty($fallbackTeams)) {
                     $teams = $fallbackTeams;
+                    $sourceLeagueMeta = $fallbackMeta;
                     $usedFallbackLeagueKey = $renewedLeagueKey;
                 }
             }
@@ -93,13 +96,15 @@ class RosterService
         return [
             'teams'  => $teams,
             'league' => [
-                'league_key'           => (string) ($leagueMeta['league_key'] ?? ''),
-                'name'                 => (string) ($leagueMeta['name'] ?? ''),
-                'season'               => (string) ($leagueMeta['season'] ?? ''),
-                'draft_status'         => (string) ($leagueMeta['draft_status'] ?? ''),
-                'current_week'         => (string) ($leagueMeta['current_week'] ?? ''),
+                'league_key'           => (string) ($sourceLeagueMeta['league_key'] ?? ''),
+                'name'                 => (string) ($sourceLeagueMeta['name'] ?? ''),
+                'season'               => (string) ($sourceLeagueMeta['season'] ?? ''),
+                'draft_status'         => (string) ($sourceLeagueMeta['draft_status'] ?? ''),
+                'current_week'         => (string) ($sourceLeagueMeta['current_week'] ?? ''),
                 'used_fallback'        => $usedFallbackLeagueKey !== null,
                 'fallback_league_key'  => (string) ($usedFallbackLeagueKey ?? ''),
+                'configured_league_key'=> $this->leagueKey,
+                'configured_season'    => (string) ($leagueMeta['season'] ?? ''),
             ],
         ];
     }
