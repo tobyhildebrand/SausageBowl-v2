@@ -78,7 +78,12 @@ class RosterService
         $teams = $this->parseRosters($raw);
 
         $usedFallbackLeagueKey = null;
-        if ($this->areAllTeamsEmpty($teams) && strtolower((string) ($leagueMeta['draft_status'] ?? '')) === 'predraft') {
+        $draftStatus = strtolower((string) ($leagueMeta['draft_status'] ?? ''));
+        // Trigger fallback for predraft (empty rosters) OR postdraft (season ended,
+        // offseason add/drop transactions live in the renewed next-season league).
+        $shouldTryRenewed = ($draftStatus === 'postdraft')
+            || ($draftStatus === 'predraft' && $this->areAllTeamsEmpty($teams));
+        if ($shouldTryRenewed) {
             $renewedLeagueKey = $this->buildRenewedLeagueKey((string) ($leagueMeta['renew'] ?? ''));
             if ($renewedLeagueKey !== null) {
                 $fallbackRaw = $this->fetchRosterPayload($renewedLeagueKey);

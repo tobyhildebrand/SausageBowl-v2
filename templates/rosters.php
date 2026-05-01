@@ -5,9 +5,9 @@
             $statusLabel = strtoupper((string)($league['draft_status'] ?? 'unknown'));
             $statusClass = strtolower((string)($league['draft_status'] ?? 'unknown'));
         ?>
-        <span class="league-status-badge league-status-badge--<?= htmlspecialchars($statusClass) ?>">
-            <?= htmlspecialchars($statusLabel) ?>
-        </span>
+        <?php if ($statusLabel === 'PREDRAFT'): ?>
+            <span class="league-status-badge league-status-badge--predraft">Pre-Draft</span>
+        <?php endif; ?>
     </div>
 </section>
 
@@ -51,20 +51,11 @@
     }
 ?>
 
-<?php if ($isPreDraft): ?>
+<?php /* Debug: source=<?= htmlspecialchars((string)($league['league_key']??'')) ?> season=<?= htmlspecialchars((string)($league['season']??'')) ?> configured=<?= htmlspecialchars((string)($league['configured_league_key']??'')) ?> configSeason=<?= htmlspecialchars((string)($league['configured_season']??'')) ?> */ ?>
+<?php if ($isPreDraft && !$usedFallback): ?>
     <div class="roster-notice">
-        <?php if ($usedFallback): ?>
-            Yahoo reports this league as pre-draft, so live roster data is empty.
-            Showing carry-over rosters from the renewed previous season league instead.
-        <?php else: ?>
-            Yahoo currently reports this league as pre-draft, so roster player lists are still empty.
-            They will populate automatically after the draft.
-        <?php endif; ?>
-        <br>
-        Source league: <?= htmlspecialchars((string) ($league['league_key'] ?? '')) ?>
-        (season <?= htmlspecialchars((string) ($league['season'] ?? '')) ?>),
-        configured: <?= htmlspecialchars((string) ($league['configured_league_key'] ?? '')) ?>
-        (season <?= htmlspecialchars((string) ($league['configured_season'] ?? '')) ?>)
+        Yahoo reports this league as pre-draft, so roster player lists are still empty.
+        They will populate automatically after the draft.
     </div>
 <?php endif; ?>
 
