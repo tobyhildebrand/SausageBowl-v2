@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Core\YahooApiClient;
 use RuntimeException;
+use Throwable;
 
 /**
  * RosterService – fetches and parses all team rosters from the Yahoo API.
@@ -59,7 +60,7 @@ class RosterService
      */
     public function getAllRosters(): array
     {
-        $raw = $this->api->get("league/{$this->leagueKey}/teams/roster/players");
+        $raw = $this->fetchRosterPayload($this->leagueKey);
 
         return $this->parseRosters($raw);
     }
@@ -71,20 +72,17 @@ class RosterService
      */
     public function getRosterOverview(): array
     {
-        $raw = $this->api->get("league/{$this->leagueKey}/teams/roster/players");
+        $raw = $this->fetchRosterPayload($this->leagueKey);
         $leagueMeta = $this->parseLeagueMeta($raw);
         $teams = $this->parseRosters($raw);
 
         $usedFallbackLeagueKey = null;
-        if (strtolower((string) ($leagueMeta['draft_status'] ?? '')) === 'predraft') {
+        if ($this->areAllTeamsEmpty($teams) && strtolower((string) ($leagueMeta['draft_status'] ?? '')) === 'predraft') {
             $renewedLeagueKey = $this->buildRenewedLeagueKey((string) ($leagueMeta['renew'] ?? ''));
             if ($renewedLeagueKey !== null) {
-                $fallbackRaw = $this->api->get("league/{$renewedLeagueKey}/teams/roster/players");
+                $fallbackRaw = $this->fetchRosterPayload($renewedLeagueKey);
                 $fallbackTeams = $this->parseRosters($fallbackRaw);
 
-                // During predraft, prefer previous-season carry-over rosters when available.
-                // Yahoo can return transitional rosters in the renewed league that don't yet
-                // reflect late previous-season transactions consistently.
                 if (!$this->areAllTeamsEmpty($fallbackTeams)) {
                     $teams = $fallbackTeams;
                     $usedFallbackLeagueKey = $renewedLeagueKey;
@@ -228,6 +226,19 @@ class RosterService
         }
 
         return $gameId . '.l.' . $leagueId;
+    }
+
+    private function fetchRosterPayload(string $leagueKey): array
+    {
+        $today = date('Y-m-d');
+
+        // Prefer as-of-date roster to include offseason adds/drops.
+        try {
+            return $this->api->get("league/{$leagueKey}/teams/roster;date={$today}/players");
+        } catch (Throwable $e) {
+            // Fallback to default roster endpoint for leagues that reject date-scoped calls.
+            return $this->api->get("league/{$leagueKey}/teams/roster/players");
+        }
     }
 
     private function parseTeam(array $teamData): ?array
