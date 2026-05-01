@@ -25,6 +25,7 @@ use App\Services\DraftDeskService;
 use App\Services\HistoricalInsightsService;
 use App\Services\HistoricalPointsService;
 use App\Services\HistoricalStatsService;
+use App\Services\PlayoffService;
 use App\Services\RosterService;
 
 // Load app config (used for display values; DB connection is lazy via DB::get())
@@ -207,6 +208,23 @@ try {
                 'history' => $history,
                 'points'  => $points,
                 'insights' => $insights,
+            ]);
+            break;
+
+        case '/playoff-history':
+            $cache = new CacheService();
+            $ttl = 3600; // 1 hour
+
+            $playoffBrackets = $cache->remember('playoff.brackets', $ttl, static function () use ($config): array {
+                $oauth = new YahooOAuthClient($config['yahoo']);
+                $apiClient = new YahooApiClient($oauth);
+                $playoffService = new PlayoffService($apiClient, $config['yahoo']['league_key'], 2018);
+                return $playoffService->getAllPlayoffBrackets();
+            });
+
+            $render('playoff_history', [
+                'title'           => 'Playoff History',
+                'playoffBrackets' => $playoffBrackets,
             ]);
             break;
 

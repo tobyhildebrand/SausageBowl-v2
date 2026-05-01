@@ -1102,3 +1102,245 @@ a:hover {
         width: 100%;
     }
 }
+
+/* ============================================================
+   Playoff History – Bracket Tree Layout
+   ============================================================ */
+.playoff-history {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+}
+
+.playoff-season {
+    padding: 1.5rem;
+    border: 2px solid var(--brand-line);
+    border-radius: 1rem;
+    background: linear-gradient(135deg, rgba(41, 95, 80, 0.08), rgba(35, 78, 66, 0.06));
+    scroll-margin-top: 100px;
+}
+
+.playoff-season:nth-child(1) {
+    border-color: #8b4513;
+    background: linear-gradient(135deg, rgba(139, 69, 19, 0.08), rgba(101, 50, 15, 0.06));
+}
+
+.playoff-season:nth-child(2) {
+    border-color: #c0c0c0;
+    background: linear-gradient(135deg, rgba(192, 192, 192, 0.08), rgba(169, 169, 169, 0.06));
+}
+
+.playoff-season:nth-child(3) {
+    border-color: #daa520;
+    background: linear-gradient(135deg, rgba(218, 165, 32, 0.08), rgba(184, 134, 11, 0.06));
+}
+
+.playoff-season__header {
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    padding-bottom: 0.8rem;
+}
+
+.playoff-season__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2a3a48;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.playoff-season__champion {
+    font-size: 1rem;
+    color: #d4a574;
+    font-weight: 600;
+    background: rgba(212, 165, 116, 0.12);
+    padding: 0.25rem 0.6rem;
+    border-radius: 0.4rem;
+}
+
+.playoff-bracket {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.playoff-round {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.playoff-round__label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #5f6c7b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.5rem 0.6rem;
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 0.4rem;
+    text-align: center;
+}
+
+.playoff-round__matchups {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.playoff-matchup {
+    border: 1px solid var(--brand-line);
+    border-radius: 0.6rem;
+    background: var(--surface-2);
+    padding: 0.75rem;
+    transition: all 0.2s ease;
+}
+
+.playoff-matchup:hover {
+    border-color: var(--brand-primary);
+    box-shadow: 0 4px 12px rgba(41, 95, 80, 0.12);
+    background: var(--surface);
+}
+
+.playoff-matchup__teams {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.playoff-team {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.6rem;
+    background: #fafbfc;
+    border-radius: 0.4rem;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.playoff-team.is-winner {
+    background: linear-gradient(135deg, #d4f1d4, #e8fce8);
+    font-weight: 600;
+    color: #1f4f42;
+}
+
+.playoff-team__name {
+    flex: 1;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.playoff-team__score {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-left: 0.4rem;
+    min-width: 2.5rem;
+    text-align: right;
+}
+
+.playoff-team.is-winner .playoff-team__score {
+    color: #1f4f42;
+}
+
+.playoff-matchup__divider {
+    text-align: center;
+    padding: 0.2rem 0;
+    font-size: 0.75rem;
+    color: #a0aab5;
+}
+
+.playoff-matchup__vs {
+    display: inline-block;
+    font-weight: 600;
+}
+
+.playoff-season__result {
+    background: rgba(212, 165, 116, 0.1);
+    padding: 0.75rem 1rem;
+    border-radius: 0.6rem;
+    border-left: 3px solid #d4a574;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.playoff-result-label {
+    font-weight: 600;
+    color: #5f6c7b;
+}
+
+.playoff-result-value {
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+.playoff-state {
+    margin: 1rem 0;
+    padding: 0.75rem 1rem;
+    border-radius: 0.6rem;
+    font-size: 0.9rem;
+}
+
+.playoff-state--warning {
+    border: 1px solid #f0b36a;
+    background: var(--warn-bg);
+    color: var(--warn-ink);
+}
+
+.playoff-state--info {
+    border: 1px solid #8eb9aa;
+    background: #edf7f3;
+    color: #1f4f42;
+}
+
+@media (max-width: 1024px) {
+    .playoff-bracket {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 1rem;
+    }
+
+    .playoff-season {
+        padding: 1.2rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .playoff-history {
+        gap: 1.5rem;
+    }
+
+    .playoff-season {
+        padding: 1rem;
+    }
+
+    .playoff-season__title {
+        font-size: 1.2rem;
+    }
+
+    .playoff-bracket {
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
+    }
+
+    .playoff-matchup__teams {
+        gap: 0.4rem;
+    }
+
+    .playoff-team {
+        padding: 0.4rem 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .playoff-team__score {
+        font-size: 0.75rem;
+    }
+}
