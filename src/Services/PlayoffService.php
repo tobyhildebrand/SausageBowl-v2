@@ -128,7 +128,7 @@ class PlayoffService
 
                 try {
                     $raw = $this->api->get('league/' . $leagueKey . '/scoreboard', ['week' => $week]);
-                    $weekMatchups = $this->parseScoreboardWeek($raw);
+                    $weekMatchups = $this->dedupeMatchups($this->parseScoreboardWeek($raw));
                     $debug['total_matchups_seen'] += count($weekMatchups);
 
                     // Preferred: explicit playoff, excluding consolation.
@@ -146,12 +146,6 @@ class PlayoffService
                             static fn(array $m): bool => !($m['is_consolation'] ?? false)
                         ));
                         $filterMode = 'non_consolation_fallback';
-                    }
-
-                    // Fallback #2: as last resort keep all matchups in declared playoff week range.
-                    if ($playoffMatchups === []) {
-                        $playoffMatchups = $weekMatchups;
-                        $filterMode = 'all_matchups_fallback';
                     }
 
                     if ($playoffMatchups !== []) {
@@ -314,63 +308,93 @@ class PlayoffService
      */
     private function parseScoreboardWeek(array $raw): array
     {
-        $leagueData = $raw['fantasy_content']['league'] ?? null;
-        if (!is_array($leagueData)) {
+        $scoreboard = $raw['fantasy_content']['league'][1]['scoreboard'] ?? null;
+        if (!is_array($scoreboard)) {
             return [];
         }
 
-        $matchupsNodes = [];
-        $this->collectNodesByKey($leagueData, 'matchups', $matchupsNodes);
+        // Use only the direct scoreboard.matchups node for the requested week.
+        $matchupsRaw = $scoreboard[0]['matchups'] ?? $scoreboard['0']['matchups'] ?? $scoreboard['matchups'] ?? null;
+        if (!is_array($matchupsRaw)) {
+            return [];
+        }
 
         $matchups = [];
 
-        foreach ($matchupsNodes as $node) {
-            if (!is_array($node)) {
+        foreach ($matchupsRaw as $k => $entry) {
+            if ($k === 'count') {
                 continue;
             }
 
-            foreach ($node as $k => $entry) {
-                if ($k === 'count') {
-                    continue;
-                }
-
-                $matchupData = $entry['matchup'] ?? $entry;
-                if (!is_array($matchupData)) {
-                    continue;
-                }
-
-                $teams = $this->parseMatchupTeams($matchupData);
-                if (count($teams) !== 2) {
-                    continue;
-                }
-
-                $team1Name = (string) ($teams[0]['name'] ?? '');
-                $team2Name = (string) ($teams[1]['name'] ?? '');
-                if ($team1Name === '' || $team2Name === '') {
-                    continue;
-                }
-
-                $team1Score = $teams[0]['points'] ?? null;
-                $team2Score = $teams[1]['points'] ?? null;
-
-                $winner = null;
-                if ($team1Score !== null && $team2Score !== null) {
-                    $winner = $team1Score > $team2Score ? $team1Name : $team2Name;
-                }
-
-                $matchups[] = [
-                    'team_1' => $team1Name,
-                    'team_2' => $team2Name,
-                    'team_1_score' => $team1Score,
-                    'team_2_score' => $team2Score,
-                    'winner' => $winner,
-                    'is_playoffs' => (string) ($matchupData['is_playoffs'] ?? '0') === '1',
-                    'is_consolation' => (string) ($matchupData['is_consolation'] ?? '0') === '1',
-                ];
+            $matchupData = $entry['matchup'] ?? $entry;
+            if (!is_array($matchupData)) {
+                continue;
             }
+
+            $teams = $this->parseMatchupTeams($matchupData);
+            if (count($teams) !== 2) {
+                continue;
+            }
+
+            $team1Name = (string) ($teams[0]['name'] ?? '');
+            $team2Name = (string) ($teams[1]['name'] ?? '');
+            if ($team1Name === '' || $team2Name === '') {
+                continue;
+            }
+
+            $team1Score = $teams[0]['points'] ?? null;
+            $team2Score = $teams[1]['points'] ?? null;
+
+            $winner = null;
+            if ($team1Score !== null && $team2Score !== null) {
+                $winner = $team1Score > $team2Score ? $team1Name : $team2Name;
+            }
+
+            $matchupId = (string) ($matchupData['matchup_id'] ?? '');
+
+            $matchups[] = [
+                'matchup_id' => $matchupId,
+                'team_1' => $team1Name,
+                'team_2' => $team2Name,
+                'team_1_score' => $team1Score,
+                'team_2_score' => $team2Score,
+                'winner' => $winner,
+                'is_playoffs' => (string) ($matchupData['is_playoffs'] ?? '0') === '1',
+                'is_consolation' => (string) ($matchupData['is_consolation'] ?? '0') === '1',
+            ];
         }
 
         return $matchups;
+    }
+
+    /** @param array<int, array<string, mixed>> $matchups @return array<int, array<string, mixed>> */
+    private function dedupeMatchups(array $matchups): array
+    {
+        $seen = [];
+        $out = [];
+
+        foreach ($matchups as $m) {
+            $id = trim((string) ($m['matchup_id'] ?? ''));
+
+            if ($id !== '') {
+                $key = 'id:' . $id;
+            } else {
+                $a = strtolower(trim((string) ($m['team_1'] ?? '')));
+                $b = strtolower(trim((string) ($m['team_2'] ?? '')));
+                $pair = [$a, $b];
+                sort($pair);
+                $key = 'pair:' . implode('|', $pair);
+            }
+
+            if (isset($seen[$key])) {
+                continue;
+            }
+
+            $seen[$key] = true;
+            $out[] = $m;
+        }
+
+        return $out;
     }
 
     /** @param array<string, mixed> $node @param array<int, mixed> $collector */
