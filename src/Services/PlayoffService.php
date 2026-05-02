@@ -257,12 +257,22 @@ class PlayoffService
             throw new RuntimeException('Unexpected Yahoo API response structure for league meta.');
         }
 
+        $playoffStartWeek = $this->findIntByKeyRecursively($meta, 'playoff_start_week')
+            ?? $this->findIntByKeyRecursively($raw, 'playoff_start_week')
+            ?? 0;
+
+        $endWeek = $this->findIntByKeyRecursively($meta, 'end_week')
+            ?? $this->findIntByKeyRecursively($meta, 'num_weeks')
+            ?? $this->findIntByKeyRecursively($raw, 'end_week')
+            ?? $this->findIntByKeyRecursively($raw, 'num_weeks')
+            ?? 0;
+
         return [
             'league_key' => (string) ($meta['league_key'] ?? ''),
             'season' => (string) ($meta['season'] ?? ''),
             'renew' => (string) ($meta['renew'] ?? ''),
-            'playoff_start_week' => (int) ($meta['playoff_start_week'] ?? 0),
-            'end_week' => (int) ($meta['end_week'] ?? 0),
+            'playoff_start_week' => $playoffStartWeek,
+            'end_week' => $endWeek,
         ];
     }
 
@@ -275,9 +285,19 @@ class PlayoffService
             throw new RuntimeException('Unexpected Yahoo API response structure for league settings.');
         }
 
+        $playoffStartWeek = $this->findIntByKeyRecursively($settings, 'playoff_start_week')
+            ?? $this->findIntByKeyRecursively($raw, 'playoff_start_week')
+            ?? 0;
+
+        $endWeek = $this->findIntByKeyRecursively($settings, 'end_week')
+            ?? $this->findIntByKeyRecursively($settings, 'num_weeks')
+            ?? $this->findIntByKeyRecursively($raw, 'end_week')
+            ?? $this->findIntByKeyRecursively($raw, 'num_weeks')
+            ?? 0;
+
         return [
-            'playoff_start_week' => (int) ($settings['playoff_start_week'] ?? 0),
-            'end_week' => (int) ($settings['end_week'] ?? 0),
+            'playoff_start_week' => $playoffStartWeek,
+            'end_week' => $endWeek,
         ];
     }
 
@@ -365,6 +385,51 @@ class PlayoffService
                 $this->collectNodesByKey($v, $wantedKey, $collector);
             }
         }
+    }
+
+    /** @param array<string, mixed>|array<int, mixed> $node */
+    private function findIntByKeyRecursively(array $node, string $wantedKey): ?int
+    {
+        foreach ($node as $k => $v) {
+            if ($k === $wantedKey) {
+                $parsed = $this->toInt($v);
+                if ($parsed !== null) {
+                    return $parsed;
+                }
+            }
+
+            if (is_array($v)) {
+                $found = $this->findIntByKeyRecursively($v, $wantedKey);
+                if ($found !== null) {
+                    return $found;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /** @param mixed $value */
+    private function toInt($value): ?int
+    {
+        if (is_int($value)) {
+            return $value;
+        }
+
+        if (is_float($value)) {
+            return (int) $value;
+        }
+
+        if (!is_string($value)) {
+            return null;
+        }
+
+        $normalized = trim($value);
+        if ($normalized === '' || !is_numeric($normalized)) {
+            return null;
+        }
+
+        return (int) $normalized;
     }
 
     /** @return array<int, array{name: string, points: ?float}> */
