@@ -25,7 +25,6 @@ use App\Services\DraftDeskService;
 use App\Services\HistoricalInsightsService;
 use App\Services\HistoricalPointsService;
 use App\Services\HistoricalStatsService;
-use App\Services\PlayoffService;
 use App\Services\RosterService;
 
 // Load app config (used for display values; DB connection is lazy via DB::get())
@@ -212,34 +211,9 @@ try {
             break;
 
         case '/playoff-history':
-            $debugPlayoff = isset($_GET['debug_playoff']) && $_GET['debug_playoff'] === '1';
-            $cache = new CacheService();
-            $ttl = 3600; // 1 hour
-
-            $oauth = new YahooOAuthClient($config['yahoo']);
-            $apiClient = new YahooApiClient($oauth);
-            $playoffService = new PlayoffService($apiClient, $config['yahoo']['league_key'], 2018);
-
-            $playoffDebug = [];
-
-            if ($debugPlayoff) {
-                // Debug mode bypasses cache so we can inspect current Yahoo responses.
-                $debugResult = $playoffService->getAllPlayoffBracketsWithDebug();
-                $playoffBrackets = (array) ($debugResult['brackets'] ?? []);
-                $playoffDebug = (array) ($debugResult['debug'] ?? []);
-            } else {
-                $playoffBrackets = $cache->remember('playoff.brackets', $ttl, static function () use ($playoffService): array {
-                    return $playoffService->getAllPlayoffBrackets();
-                });
-            }
-
-            $render('playoff_history', [
-                'title'           => 'Playoff History',
-                'playoffBrackets' => $playoffBrackets,
-                'playoffDebug'    => $playoffDebug,
-                'debugPlayoff'    => $debugPlayoff,
-            ]);
-            break;
+            http_response_code(404);
+            echo 'Not found.';
+            exit;
 
         case '/draft-board':
             $seasonYear = (int) ($_GET['season'] ?? date('Y'));
