@@ -47,11 +47,17 @@ class PlayoffService
                 return $this->emptyBracket($seasonYear);
             }
 
-            $settingsRaw = $this->api->get('league/' . $leagueKey . '/settings');
-            $settings = $this->parseSettings($settingsRaw);
+            $leagueMetaRaw = $this->api->get('league/' . $leagueKey);
+            $leagueMeta = $this->parseLeagueMeta($leagueMetaRaw);
+            $playoffStartWeek = (int) ($leagueMeta['playoff_start_week'] ?? 0);
+            $endWeek = (int) ($leagueMeta['end_week'] ?? 0);
 
-            $playoffStartWeek = $settings['playoff_start_week'];
-            $endWeek = $settings['end_week'];
+            if ($playoffStartWeek <= 0 || $endWeek <= 0) {
+                $settingsRaw = $this->api->get('league/' . $leagueKey . '/settings');
+                $settings = $this->parseSettings($settingsRaw);
+                $playoffStartWeek = $settings['playoff_start_week'];
+                $endWeek = $settings['end_week'];
+            }
 
             if ($playoffStartWeek <= 0 || $endWeek <= 0 || $playoffStartWeek > $endWeek) {
                 return $this->emptyBracket($seasonYear);
@@ -60,7 +66,8 @@ class PlayoffService
             $matchupsByWeek = [];
             for ($week = $playoffStartWeek; $week <= $endWeek; $week++) {
                 try {
-                    $raw = $this->api->get('league/' . $leagueKey . '/scoreboard;week=' . $week);
+                    // Use the same endpoint style as HistoricalInsightsService.
+                    $raw = $this->api->get('league/' . $leagueKey . '/scoreboard', ['week' => $week]);
                     $weekMatchups = $this->parseScoreboardWeek($raw);
 
                     $playoffMatchups = array_filter(
@@ -176,6 +183,8 @@ class PlayoffService
             'league_key' => (string) ($meta['league_key'] ?? ''),
             'season' => (string) ($meta['season'] ?? ''),
             'renew' => (string) ($meta['renew'] ?? ''),
+            'playoff_start_week' => (int) ($meta['playoff_start_week'] ?? 0),
+            'end_week' => (int) ($meta['end_week'] ?? 0),
         ];
     }
 
@@ -207,80 +216,122 @@ class PlayoffService
      */
     private function parseScoreboardWeek(array $raw): array
     {
-        $scoreboard = $raw['fantasy_content']['league'][1]['scoreboard'] ?? null;
-        if (!is_array($scoreboard)) {
+        $leagueData = $raw['fantasy_content']['league'] ?? null;
+        if (!is_array($leagueData)) {
             return [];
         }
 
-        $matchupsRaw = $scoreboard[0]['matchups'] ?? $scoreboard['0']['matchups'] ?? $scoreboard['matchups'] ?? null;
-        if (!is_array($matchupsRaw)) {
-            return [];
-        }
+        $matchupsNodes = [];
+        $this->collectNodesByKey($leagueData, 'matchups', $matchupsNodes);
 
         $matchups = [];
 
-        foreach ($matchupsRaw as $key => $entry) {
-            if ($key === 'count') {
+        foreach ($matchupsNodes as $node) {
+            if (!is_array($node)) {
                 continue;
             }
 
-            $matchup = $entry['matchup'] ?? null;
-            if (!is_array($matchup)) {
-                continue;
+            foreach ($node as $key => $entry) {
+                if ($key === 'count') {
+                    continue;
+                }
+
+                $matchup = $entry['matchup'] ?? $entry;
+                if (!is_array($matchup)) {
+                    continue;
+                }
+
+                $teams = $this->parseMatchupTeams($matchup);
+                if (count($teams) !== 2) {
+                    continue;
+                }
+
+                $isPlayoffs = (string) ($matchup['is_playoffs'] ?? '0') === '1';
+                $isConsolation = (string) ($matchup['is_consolation'] ?? '0') === '1';
+
+                $team1Name = (string) ($teams[0]['name'] ?? '');
+                $team2Name = (string) ($teams[1]['name'] ?? '');
+                $team1Score = $teams[0]['points'] ?? null;
+                $team2Score = $teams[1]['points'] ?? null;
+
+                if ($team1Name === '' || $team2Name === '') {
+                    continue;
+                }
+
+                $winner = null;
+                if ($team1Score !== null && $team2Score !== null) {
+                    $winner = $team1Score > $team2Score ? $team1Name : $team2Name;
+                }
+
+                $matchups[] = [
+                    'team_1' => $team1Name,
+                    'team_2' => $team2Name,
+                    'team_1_score' => $team1Score,
+                    'team_2_score' => $team2Score,
+                    'winner' => $winner,
+                    'is_playoffs' => $isPlayoffs,
+                    'is_consolation' => $isConsolation,
+                ];
             }
-
-            $isPlayoffs = (string) ($matchup['is_playoffs'] ?? '0') === '1';
-            $isConsolation = (string) ($matchup['is_consolation'] ?? '0') === '1';
-
-            $teams = $matchup['teams'] ?? null;
-            if (!is_array($teams)) {
-                continue;
-            }
-
-            $team1Block = $teams[0]['team'] ?? $teams['0']['team'] ?? null;
-            $team2Block = $teams[1]['team'] ?? $teams['1']['team'] ?? null;
-
-            if (!is_array($team1Block) || !is_array($team2Block)) {
-                continue;
-            }
-
-            $team1Name = $this->extractTeamName($team1Block);
-            $team2Name = $this->extractTeamName($team2Block);
-
-            if ($team1Name === null || $team2Name === null) {
-                continue;
-            }
-
-            $team1Score = $this->extractTeamScore($team1Block);
-            $team2Score = $this->extractTeamScore($team2Block);
-
-            $winner = null;
-            if ($team1Score !== null && $team2Score !== null) {
-                $winner = $team1Score > $team2Score ? $team1Name : $team2Name;
-            }
-
-            $matchups[] = [
-                'team_1' => $team1Name,
-                'team_2' => $team2Name,
-                'team_1_score' => $team1Score,
-                'team_2_score' => $team2Score,
-                'winner' => $winner,
-                'is_playoffs' => $isPlayoffs,
-                'is_consolation' => $isConsolation,
-            ];
         }
 
         return $matchups;
     }
 
-    private function extractTeamName(array $teamBlock): ?string
+    /** @param array<string, mixed> $node @param array<int, mixed> $collector */
+    private function collectNodesByKey(array $node, string $wantedKey, array &$collector): void
     {
-        $items = $teamBlock[0] ?? null;
-        if (!is_array($items)) {
+        foreach ($node as $k => $v) {
+            if ($k === $wantedKey && is_array($v)) {
+                $collector[] = $v;
+            }
+
+            if (is_array($v)) {
+                $this->collectNodesByKey($v, $wantedKey, $collector);
+            }
+        }
+    }
+
+    /**
+     * @return array<int, array{name: string, points: ?float}>
+     */
+    private function parseMatchupTeams(array $matchupData): array
+    {
+        $teamNodes = [];
+        $this->collectNodesByKey($matchupData, 'team', $teamNodes);
+
+        $teams = [];
+        foreach ($teamNodes as $teamData) {
+            if (!is_array($teamData)) {
+                continue;
+            }
+
+            $name = $this->extractTeamName($teamData);
+            if ($name === null || $name === '') {
+                continue;
+            }
+
+            $teams[] = [
+                'name' => $name,
+                'points' => $this->extractTeamScore($teamData),
+            ];
+        }
+
+        if (count($teams) > 2) {
+            $teams = array_slice($teams, 0, 2);
+        }
+
+        return $teams;
+    }
+
+    private function extractTeamName(array $teamData): ?string
+    {
+        $meta = $teamData[0] ?? [];
+        if (!is_array($meta)) {
             return null;
         }
 
-        foreach ($items as $item) {
+        foreach ($meta as $item) {
             if (is_array($item) && isset($item['name']) && is_string($item['name'])) {
                 return $item['name'];
             }
@@ -289,14 +340,42 @@ class PlayoffService
         return null;
     }
 
-    private function extractTeamScore(array $teamBlock): ?float
+    private function extractTeamScore(array $teamData): ?float
     {
-        $points = $teamBlock[1]['team_points']['total'] ?? null;
+        if (
+            isset($teamData[1]['team_points']['total'])
+            && is_scalar($teamData[1]['team_points']['total'])
+        ) {
+            return (float) $teamData[1]['team_points']['total'];
+        }
+
+        $points = $this->findTeamPointsRecursively($teamData);
         if ($points === null || $points === '') {
             return null;
         }
 
         return (float) $points;
+    }
+
+    /** @param array<string, mixed>|array<int, mixed> $node */
+    private function findTeamPointsRecursively(array $node): ?float
+    {
+        foreach ($node as $k => $v) {
+            if ($k === 'team_points' && is_array($v)) {
+                if (isset($v['total']) && is_scalar($v['total'])) {
+                    return (float) $v['total'];
+                }
+            }
+
+            if (is_array($v)) {
+                $found = $this->findTeamPointsRecursively($v);
+                if ($found !== null) {
+                    return $found;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
