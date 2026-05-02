@@ -14,6 +14,63 @@ declare(strict_types=1);
     <h1><?= htmlspecialchars($title ?? 'Playoff History') ?></h1>
 </section>
 
+<?php if (!empty($debugPlayoff)): ?>
+    <div class="playoff-state playoff-state--info" style="margin-bottom: 1rem;">
+        Debug mode is ON. Diagnostics are shown below.
+        <br>
+        <a href="/index.php?r=playoff-history">Disable debug mode</a>
+    </div>
+
+    <?php if (!empty($playoffDebug)): ?>
+        <div class="history-table-wrap" style="margin-bottom: 1.25rem;">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Season</th>
+                        <th>Status</th>
+                        <th>League Key</th>
+                        <th>Playoff Weeks</th>
+                        <th>Raw Matchups</th>
+                        <th>Used Matchups</th>
+                        <th>Errors</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($playoffDebug as $season => $dbg): ?>
+                        <?php
+                            $startWeek = (int) ($dbg['playoff_start_week'] ?? 0);
+                            $endWeek = (int) ($dbg['end_week'] ?? 0);
+                            $errors = (array) ($dbg['errors'] ?? []);
+                        ?>
+                        <tr>
+                            <td><?= (int) $season ?></td>
+                            <td><?= htmlspecialchars((string) ($dbg['status'] ?? 'unknown')) ?></td>
+                            <td><?= htmlspecialchars((string) ($dbg['league_key'] ?? '')) ?></td>
+                            <td><?= $startWeek ?> - <?= $endWeek ?></td>
+                            <td><?= (int) ($dbg['total_matchups_seen'] ?? 0) ?></td>
+                            <td><?= (int) ($dbg['total_playoff_matchups'] ?? 0) ?></td>
+                            <td>
+                                <?php if ($errors !== []): ?>
+                                    <?php foreach ($errors as $error): ?>
+                                        <div><?= htmlspecialchars((string) $error) ?></div>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    -
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php endif; ?>
+<?php else: ?>
+    <div class="playoff-state playoff-state--info" style="margin-bottom: 1rem;">
+        Need diagnostics? Open
+        <a href="/index.php?r=playoff-history&amp;debug_playoff=1">Playoff History debug mode</a>.
+    </div>
+<?php endif; ?>
+
 <div class="playoff-history">
     <?php if (empty($playoffBrackets)): ?>
         <div class="playoff-state playoff-state--info">

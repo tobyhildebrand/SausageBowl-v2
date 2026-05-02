@@ -21,81 +21,14 @@ class PlayoffService
         $this->startSeason = $startSeason;
     }
 
-    /**
-     * @return array{
-     *   season: int,
-     *   rounds: array<int, array{
-     *     round_no: int,
-     *     round_label: string,
-     *     matchups: array<int, array{
-     *       team_1: string,
-     *       team_2: string,
-     *       team_1_score: ?float,
-     *       team_2_score: ?float,
-     *       winner: ?string
-     *     }>
-     *   }>,
-     *   champion: ?string,
-     *   runner_up: ?string
-     * }
-     */
+    /** @return array{season: int, rounds: array, champion: ?string, runner_up: ?string} */
     public function getPlayoffBracket(int $seasonYear): array
     {
-        try {
-            $leagueKey = $this->getLeagueKeyForSeason($seasonYear);
-            if ($leagueKey === null) {
-                return $this->emptyBracket($seasonYear);
-            }
-
-            $leagueMetaRaw = $this->api->get('league/' . $leagueKey);
-            $leagueMeta = $this->parseLeagueMeta($leagueMetaRaw);
-            $playoffStartWeek = (int) ($leagueMeta['playoff_start_week'] ?? 0);
-            $endWeek = (int) ($leagueMeta['end_week'] ?? 0);
-
-            if ($playoffStartWeek <= 0 || $endWeek <= 0) {
-                $settingsRaw = $this->api->get('league/' . $leagueKey . '/settings');
-                $settings = $this->parseSettings($settingsRaw);
-                $playoffStartWeek = $settings['playoff_start_week'];
-                $endWeek = $settings['end_week'];
-            }
-
-            if ($playoffStartWeek <= 0 || $endWeek <= 0 || $playoffStartWeek > $endWeek) {
-                return $this->emptyBracket($seasonYear);
-            }
-
-            $matchupsByWeek = [];
-            for ($week = $playoffStartWeek; $week <= $endWeek; $week++) {
-                try {
-                    // Use the same endpoint style as HistoricalInsightsService.
-                    $raw = $this->api->get('league/' . $leagueKey . '/scoreboard', ['week' => $week]);
-                    $weekMatchups = $this->parseScoreboardWeek($raw);
-
-                    $playoffMatchups = array_filter(
-                        $weekMatchups,
-                        static fn(array $m): bool => ($m['is_playoffs'] ?? false) && !($m['is_consolation'] ?? false)
-                    );
-
-                    if ($playoffMatchups !== []) {
-                        $matchupsByWeek[$week] = array_values($playoffMatchups);
-                    }
-                } catch (Throwable $e) {
-                    continue;
-                }
-            }
-
-            if ($matchupsByWeek === []) {
-                return $this->emptyBracket($seasonYear);
-            }
-
-            return $this->buildBracket($matchupsByWeek, $seasonYear);
-        } catch (Throwable $e) {
-            return $this->emptyBracket($seasonYear);
-        }
+        $result = $this->getPlayoffBracketWithDebug($seasonYear);
+        return $result['bracket'];
     }
 
-    /**
-     * @return array<int, array{season: int, rounds: array, champion: ?string, runner_up: ?string}>
-     */
+    /** @return array<int, array{season: int, rounds: array, champion: ?string, runner_up: ?string}> */
     public function getAllPlayoffBrackets(): array
     {
         $brackets = [];
@@ -106,6 +39,151 @@ class PlayoffService
         }
 
         return $brackets;
+    }
+
+    /**
+     * @return array{
+     *   brackets: array<int, array{season: int, rounds: array, champion: ?string, runner_up: ?string}>,
+     *   debug: array<int, array<string, mixed>>
+     * }
+     */
+    public function getAllPlayoffBracketsWithDebug(): array
+    {
+        $brackets = [];
+        $debug = [];
+        $currentYear = (int) date('Y');
+
+        for ($year = $this->startSeason; $year <= $currentYear; $year++) {
+            $result = $this->getPlayoffBracketWithDebug($year);
+            $brackets[$year] = $result['bracket'];
+            $debug[$year] = $result['debug'];
+        }
+
+        return [
+            'brackets' => $brackets,
+            'debug' => $debug,
+        ];
+    }
+
+    /** @return array{bracket: array{season: int, rounds: array, champion: ?string, runner_up: ?string}, debug: array<string, mixed>} */
+    private function getPlayoffBracketWithDebug(int $seasonYear): array
+    {
+        $debug = [
+            'season' => $seasonYear,
+            'league_key' => null,
+            'playoff_start_week' => 0,
+            'end_week' => 0,
+            'weeks_attempted' => [],
+            'weeks_used' => [],
+            'total_matchups_seen' => 0,
+            'total_playoff_matchups' => 0,
+            'errors' => [],
+            'status' => 'init',
+        ];
+
+        try {
+            $leagueKey = $this->getLeagueKeyForSeason($seasonYear);
+            $debug['league_key'] = $leagueKey;
+
+            if ($leagueKey === null || $leagueKey === '') {
+                $debug['status'] = 'no_league_key_for_season';
+                return ['bracket' => $this->emptyBracket($seasonYear), 'debug' => $debug];
+            }
+
+            $playoffStartWeek = 0;
+            $endWeek = 0;
+
+            try {
+                $leagueMetaRaw = $this->api->get('league/' . $leagueKey);
+                $leagueMeta = $this->parseLeagueMeta($leagueMetaRaw);
+                $playoffStartWeek = (int) ($leagueMeta['playoff_start_week'] ?? 0);
+                $endWeek = (int) ($leagueMeta['end_week'] ?? 0);
+            } catch (Throwable $e) {
+                $debug['errors'][] = 'league_meta_failed: ' . $e->getMessage();
+            }
+
+            if ($playoffStartWeek <= 0 || $endWeek <= 0) {
+                try {
+                    $settingsRaw = $this->api->get('league/' . $leagueKey . '/settings');
+                    $settings = $this->parseSettings($settingsRaw);
+                    $playoffStartWeek = (int) ($settings['playoff_start_week'] ?? 0);
+                    $endWeek = (int) ($settings['end_week'] ?? 0);
+                } catch (Throwable $e) {
+                    $debug['errors'][] = 'settings_failed: ' . $e->getMessage();
+                }
+            }
+
+            $debug['playoff_start_week'] = $playoffStartWeek;
+            $debug['end_week'] = $endWeek;
+
+            if ($playoffStartWeek <= 0 || $endWeek <= 0 || $playoffStartWeek > $endWeek) {
+                $debug['status'] = 'invalid_playoff_week_range';
+                return ['bracket' => $this->emptyBracket($seasonYear), 'debug' => $debug];
+            }
+
+            $matchupsByWeek = [];
+
+            for ($week = $playoffStartWeek; $week <= $endWeek; $week++) {
+                $debug['weeks_attempted'][] = $week;
+
+                try {
+                    $raw = $this->api->get('league/' . $leagueKey . '/scoreboard', ['week' => $week]);
+                    $weekMatchups = $this->parseScoreboardWeek($raw);
+                    $debug['total_matchups_seen'] += count($weekMatchups);
+
+                    // Preferred: explicit playoff, excluding consolation.
+                    $playoffMatchups = array_values(array_filter(
+                        $weekMatchups,
+                        static fn(array $m): bool => ($m['is_playoffs'] ?? false) && !($m['is_consolation'] ?? false)
+                    ));
+
+                    $filterMode = 'explicit_playoffs';
+
+                    // Fallback #1: if Yahoo did not set is_playoffs reliably, keep non-consolation matchups.
+                    if ($playoffMatchups === []) {
+                        $playoffMatchups = array_values(array_filter(
+                            $weekMatchups,
+                            static fn(array $m): bool => !($m['is_consolation'] ?? false)
+                        ));
+                        $filterMode = 'non_consolation_fallback';
+                    }
+
+                    // Fallback #2: as last resort keep all matchups in declared playoff week range.
+                    if ($playoffMatchups === []) {
+                        $playoffMatchups = $weekMatchups;
+                        $filterMode = 'all_matchups_fallback';
+                    }
+
+                    if ($playoffMatchups !== []) {
+                        $matchupsByWeek[$week] = $playoffMatchups;
+                        $debug['weeks_used'][] = [
+                            'week' => $week,
+                            'filter_mode' => $filterMode,
+                            'raw_matchups' => count($weekMatchups),
+                            'used_matchups' => count($playoffMatchups),
+                        ];
+                        $debug['total_playoff_matchups'] += count($playoffMatchups);
+                    }
+                } catch (Throwable $e) {
+                    $debug['errors'][] = 'week_' . $week . '_failed: ' . $e->getMessage();
+                }
+            }
+
+            if ($matchupsByWeek === []) {
+                $debug['status'] = 'no_matchups_after_filtering';
+                return ['bracket' => $this->emptyBracket($seasonYear), 'debug' => $debug];
+            }
+
+            $debug['status'] = 'ok';
+            return [
+                'bracket' => $this->buildBracket($matchupsByWeek, $seasonYear),
+                'debug' => $debug,
+            ];
+        } catch (Throwable $e) {
+            $debug['status'] = 'fatal';
+            $debug['errors'][] = $e->getMessage();
+            return ['bracket' => $this->emptyBracket($seasonYear), 'debug' => $debug];
+        }
     }
 
     private function getLeagueKeyForSeason(int $seasonYear): ?string
@@ -165,7 +243,7 @@ class PlayoffService
             }
         }
 
-        usort($chain, static fn(array $a, array $b): int => ((int) $a['season']) <=> ((int) $b['season']));
+        usort($chain, static fn(array $a, array $b): int => ((int) ($a['season'] ?? 0)) <=> ((int) ($b['season'] ?? 0)));
 
         return $chain;
     }
@@ -231,32 +309,29 @@ class PlayoffService
                 continue;
             }
 
-            foreach ($node as $key => $entry) {
-                if ($key === 'count') {
+            foreach ($node as $k => $entry) {
+                if ($k === 'count') {
                     continue;
                 }
 
-                $matchup = $entry['matchup'] ?? $entry;
-                if (!is_array($matchup)) {
+                $matchupData = $entry['matchup'] ?? $entry;
+                if (!is_array($matchupData)) {
                     continue;
                 }
 
-                $teams = $this->parseMatchupTeams($matchup);
+                $teams = $this->parseMatchupTeams($matchupData);
                 if (count($teams) !== 2) {
                     continue;
                 }
 
-                $isPlayoffs = (string) ($matchup['is_playoffs'] ?? '0') === '1';
-                $isConsolation = (string) ($matchup['is_consolation'] ?? '0') === '1';
-
                 $team1Name = (string) ($teams[0]['name'] ?? '');
                 $team2Name = (string) ($teams[1]['name'] ?? '');
-                $team1Score = $teams[0]['points'] ?? null;
-                $team2Score = $teams[1]['points'] ?? null;
-
                 if ($team1Name === '' || $team2Name === '') {
                     continue;
                 }
+
+                $team1Score = $teams[0]['points'] ?? null;
+                $team2Score = $teams[1]['points'] ?? null;
 
                 $winner = null;
                 if ($team1Score !== null && $team2Score !== null) {
@@ -269,8 +344,8 @@ class PlayoffService
                     'team_1_score' => $team1Score,
                     'team_2_score' => $team2Score,
                     'winner' => $winner,
-                    'is_playoffs' => $isPlayoffs,
-                    'is_consolation' => $isConsolation,
+                    'is_playoffs' => (string) ($matchupData['is_playoffs'] ?? '0') === '1',
+                    'is_consolation' => (string) ($matchupData['is_consolation'] ?? '0') === '1',
                 ];
             }
         }
@@ -292,22 +367,33 @@ class PlayoffService
         }
     }
 
-    /**
-     * @return array<int, array{name: string, points: ?float}>
-     */
+    /** @return array<int, array{name: string, points: ?float}> */
     private function parseMatchupTeams(array $matchupData): array
     {
         $teamNodes = [];
         $this->collectNodesByKey($matchupData, 'team', $teamNodes);
 
         $teams = [];
+
         foreach ($teamNodes as $teamData) {
             if (!is_array($teamData)) {
                 continue;
             }
 
-            $name = $this->extractTeamName($teamData);
-            if ($name === null || $name === '') {
+            $meta = $teamData[0] ?? [];
+            if (!is_array($meta)) {
+                continue;
+            }
+
+            $name = '';
+            foreach ($meta as $item) {
+                if (is_array($item) && isset($item['name']) && is_string($item['name'])) {
+                    $name = $item['name'];
+                    break;
+                }
+            }
+
+            if ($name === '') {
                 continue;
             }
 
@@ -324,22 +410,6 @@ class PlayoffService
         return $teams;
     }
 
-    private function extractTeamName(array $teamData): ?string
-    {
-        $meta = $teamData[0] ?? [];
-        if (!is_array($meta)) {
-            return null;
-        }
-
-        foreach ($meta as $item) {
-            if (is_array($item) && isset($item['name']) && is_string($item['name'])) {
-                return $item['name'];
-            }
-        }
-
-        return null;
-    }
-
     private function extractTeamScore(array $teamData): ?float
     {
         if (
@@ -349,22 +419,15 @@ class PlayoffService
             return (float) $teamData[1]['team_points']['total'];
         }
 
-        $points = $this->findTeamPointsRecursively($teamData);
-        if ($points === null || $points === '') {
-            return null;
-        }
-
-        return (float) $points;
+        return $this->findTeamPointsRecursively($teamData);
     }
 
     /** @param array<string, mixed>|array<int, mixed> $node */
     private function findTeamPointsRecursively(array $node): ?float
     {
         foreach ($node as $k => $v) {
-            if ($k === 'team_points' && is_array($v)) {
-                if (isset($v['total']) && is_scalar($v['total'])) {
-                    return (float) $v['total'];
-                }
+            if ($k === 'team_points' && is_array($v) && isset($v['total']) && is_scalar($v['total'])) {
+                return (float) $v['total'];
             }
 
             if (is_array($v)) {
@@ -405,6 +468,7 @@ class PlayoffService
         if ($rounds !== []) {
             $finalRound = $rounds[count($rounds) - 1];
             $finalMatchup = $finalRound['matchups'][0] ?? null;
+
             if (is_array($finalMatchup)) {
                 $champion = $finalMatchup['winner'] ?? null;
                 if (is_string($champion) && $champion !== '') {
