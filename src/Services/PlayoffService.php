@@ -128,7 +128,7 @@ class PlayoffService
 
                 try {
                     $raw = $this->api->get('league/' . $leagueKey . '/scoreboard', ['week' => $week]);
-                    $weekMatchups = $this->dedupeMatchups($this->parseScoreboardWeek($raw));
+                    $weekMatchups = $this->dedupeMatchups($this->parseScoreboardWeek($raw, $week));
                     $debug['total_matchups_seen'] += count($weekMatchups);
 
                     // Preferred: explicit playoff, excluding consolation.
@@ -306,7 +306,7 @@ class PlayoffService
      *   is_consolation: bool
      * }>
      */
-    private function parseScoreboardWeek(array $raw): array
+    private function parseScoreboardWeek(array $raw, int $targetWeek): array
     {
         $scoreboard = $raw['fantasy_content']['league'][1]['scoreboard'] ?? null;
         if (!is_array($scoreboard)) {
@@ -328,6 +328,16 @@ class PlayoffService
 
             $matchupData = $entry['matchup'] ?? $entry;
             if (!is_array($matchupData)) {
+                continue;
+            }
+
+            $weekStart = $this->toInt($matchupData['week_start'] ?? null)
+                ?? $this->toInt($matchupData['week'] ?? null);
+            $weekEnd = $this->toInt($matchupData['week_end'] ?? null) ?? $weekStart;
+
+            // Yahoo can return full bracket data even when a specific week is requested.
+            // Keep only the matchups that belong to the requested week.
+            if ($weekStart === null || $weekEnd === null || $targetWeek < $weekStart || $targetWeek > $weekEnd) {
                 continue;
             }
 
