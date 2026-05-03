@@ -199,7 +199,7 @@ $filteredCount = count($filtered);
 
     <div class="history-state history-state--info">
         <strong>How to read:</strong>
-        Total Trades counts completed trades involving the team. Free Agent Adds counts players added from free agency since 2018.
+        Total Trades counts completed trades involving the team. Free Agent Adds counts players added from free agency since 2018. FAAB Spent is the total bid amount spent on those adds.
     </div>
 
     <div class="history-table-wrap">
@@ -209,6 +209,7 @@ $filteredCount = count($filtered);
                     <th data-sort="team" data-type="string">Team</th>
                     <th data-sort="trades" data-type="number">Total Trades</th>
                     <th data-sort="adds" data-type="number">Total Free Agent Adds</th>
+                    <th data-sort="faab" data-type="number">Total FAAB Spent</th>
                 </tr>
             </thead>
             <tbody>
@@ -222,6 +223,9 @@ $filteredCount = count($filtered);
                         </td>
                         <td class="history-place history-place--points" data-sort-value="<?= (int) ($row['free_agent_adds'] ?? 0) ?>">
                             <strong><?= (int) ($row['free_agent_adds'] ?? 0) ?></strong>
+                        </td>
+                        <td class="history-place history-place--points" data-sort-value="<?= (int) ($row['faab_spent'] ?? 0) ?>">
+                            <strong>$<?= number_format((int) ($row['faab_spent'] ?? 0)) ?></strong>
                         </td>
                     </tr>
                 <?php endforeach; ?>

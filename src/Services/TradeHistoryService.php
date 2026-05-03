@@ -36,7 +36,7 @@ class TradeHistoryService
      *     side_a: array{team_name: string, assets: string[]},
      *     side_b: array{team_name: string, assets: string[]}
     *   }>,
-    *   stats_rows: array<int, array{team_name: string, total_trades: int, free_agent_adds: int}>,
+    *   stats_rows: array<int, array{team_name: string, total_trades: int, free_agent_adds: int, faab_spent: int}>,
     *   errors: array<int, string>,
     *   stats_errors: array<int, string>
      * }
@@ -142,9 +142,11 @@ class TradeHistoryService
                     'league/' . $leagueKey . '/transactions;out=players'
                 );
                 $addCounts = $this->parseFreeAgentAdds($addRaw);
-                foreach ($addCounts as $teamName => $count) {
+                foreach ($addCounts as $teamName => $teamData) {
+                    $adds = $teamData['adds'] ?? 0;
+                    $faab = $teamData['faab'] ?? 0;
                     $teamNameString = $this->resolveCanonicalTeamName((string) $teamName, $season, $teamLookupBySeason, $teamDirectoryById);
-                    if ($teamNameString === null || $teamNameString === '' || $count <= 0) {
+                    if ($teamNameString === null || $teamNameString === '' || $adds <= 0) {
                         continue;
                     }
 
@@ -154,9 +156,11 @@ class TradeHistoryService
                             'team_name' => $teamNameString,
                             'total_trades' => 0,
                             'free_agent_adds' => 0,
+                            'faab_spent' => 0,
                         ];
                     }
-                    $statsByManager[$teamNameString]['free_agent_adds'] += $count;
+                    $statsByManager[$teamNameString]['free_agent_adds'] += $adds;
+                    $statsByManager[$teamNameString]['faab_spent'] += $faab;
                 }
             } catch (Throwable $e) {
                 $statsErrors[$season] = $e->getMessage();
@@ -180,6 +184,7 @@ class TradeHistoryService
                     'team_name' => $manager,
                     'total_trades' => 0,
                     'free_agent_adds' => 0,
+                    'faab_spent' => 0,
                 ];
             }
         }
@@ -209,8 +214,8 @@ class TradeHistoryService
     }
 
     /**
-     * @param array<string, array{team_name: string, total_trades: int, free_agent_adds: int}> $statsByManager
-     * @return array<string, array{team_name: string, total_trades: int, free_agent_adds: int}>
+     * @param array<string, array{team_name: string, total_trades: int, free_agent_adds: int, faab_spent: int}> $statsByManager
+     * @return array<string, array{team_name: string, total_trades: int, free_agent_adds: int, faab_spent: int}>
      */
     private function incrementTradeStat(array $statsByManager, string $teamName): array
     {
@@ -223,6 +228,7 @@ class TradeHistoryService
                 'team_name' => $teamName,
                 'total_trades' => 0,
                 'free_agent_adds' => 0,
+                'faab_spent' => 0,
             ];
         }
 
@@ -231,7 +237,7 @@ class TradeHistoryService
     }
 
     /**
-     * @return array<string, int>
+     * @return array<string, array{adds: int, faab: int}>
      */
     private function parseFreeAgentAdds(array $raw): array
     {
@@ -269,6 +275,8 @@ class TradeHistoryService
                 continue;
             }
 
+            $faabBid = isset($meta['faab_bid']) ? (int) $meta['faab_bid'] : 0;
+
             $playersSection = $txWrapper[1]['players'] ?? ($txWrapper['players'] ?? null);
             if (!is_array($playersSection)) {
                 continue;
@@ -297,7 +305,11 @@ class TradeHistoryService
                     continue;
                 }
 
-                $counts[$destinationTeamName] = (int) ($counts[$destinationTeamName] ?? 0) + 1;
+                if (!isset($counts[$destinationTeamName])) {
+                    $counts[$destinationTeamName] = ['adds' => 0, 'faab' => 0];
+                }
+                $counts[$destinationTeamName]['adds']++;
+                $counts[$destinationTeamName]['faab'] += $faabBid;
             }
         }
 
