@@ -222,11 +222,12 @@ try {
                 echo 'Debug mode is disabled.';
                 exit;
             }
+            $debugSeason = (int) ($_GET['season'] ?? 0);
             $oauth = new YahooOAuthClient($config['yahoo']);
             $apiClient = new YahooApiClient($oauth);
             $tradeService = new TradeHistoryService($apiClient, $config['yahoo']['league_key'], 2018);
             header('Content-Type: application/json; charset=utf-8');
-            echo json_encode($tradeService->getRawTransactions(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+            echo json_encode($tradeService->getRawTransactions($debugSeason), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
             exit;
 
         case '/trades':

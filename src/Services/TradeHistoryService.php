@@ -38,18 +38,30 @@ class TradeHistoryService
      * }
      */
     /**
-     * Return the raw Yahoo API response for the most recent season's transactions.
-     * Used only for debugging asset parsing.
+     * Return the raw Yahoo API response for transactions.
+     *
+     * @param int $season If > 0, tries to fetch that season; otherwise newest season.
      */
-    public function getRawTransactions(): array
+    public function getRawTransactions(int $season = 0): array
     {
         $leagues = $this->collectLeagueChain();
         if ($leagues === []) {
             return [];
         }
+
         usort($leagues, static fn(array $a, array $b): int => $b['season'] <=> $a['season']);
+
         $league = $leagues[0];
-        return $this->api->get('league/' . $league['league_key'] . '/transactions;types=trade');
+        if ($season > 0) {
+            foreach ($leagues as $candidate) {
+                if ((int) ($candidate['season'] ?? 0) === $season) {
+                    $league = $candidate;
+                    break;
+                }
+            }
+        }
+
+        return $this->api->get('league/' . $league['league_key'] . '/transactions;types=trade;out=players');
     }
 
     public function getAllTrades(): array
@@ -73,7 +85,7 @@ class TradeHistoryService
 
             try {
                 $raw = $this->api->get(
-                    'league/' . $league['league_key'] . '/transactions;types=trade'
+                    'league/' . $league['league_key'] . '/transactions;types=trade;out=players'
                 );
                 $trades = $this->parseTransactions($raw, $season);
                 foreach ($trades as $trade) {
@@ -171,8 +183,9 @@ class TradeHistoryService
                 ? date('Y-m-d', $timestamp)
                 : '';
 
-            // Parse player/pick assets
-            $playersSection = $txWrapper[1]['players'] ?? null;
+            // Parse player/pick assets. Yahoo may place players either under [1]['players']
+            // or directly under ['players'] depending on the response shape.
+            $playersSection = $txWrapper[1]['players'] ?? ($txWrapper['players'] ?? null);
 
             $sideAAssets = []; // assets sent BY trader → received by tradee
             $sideBAssets = []; // assets sent BY tradee → received by trader
@@ -188,10 +201,9 @@ class TradeHistoryService
                         continue;
                     }
 
-                    // playerWrapper[0] = array of player meta fragments
-                    // playerWrapper[1] = { transaction_data: { ... } }
-                    $assetName = $this->extractAssetName($playerWrapper[0] ?? []);
-                    $txData = $playerWrapper[1]['transaction_data'] ?? [];
+                    // playerWrapper[0] is usually meta fragments; some responses are associative.
+                    $assetName = $this->extractAssetName($playerWrapper[0] ?? $playerWrapper);
+                    $txData = $playerWrapper[1]['transaction_data'] ?? ($playerWrapper['transaction_data'] ?? []);
 
                     $sourceTeamName = (string) ($txData['source_team_name'] ?? '');
 
@@ -247,6 +259,18 @@ class TradeHistoryService
         $fullName = '';
         $displayPosition = '';
 
+        // Case 1: associative form: ['name' => ['full' => ...], 'display_position' => ...]
+        if (isset($fragments['name']['full']) && is_string($fragments['name']['full'])) {
+            $fullName = trim($fragments['name']['full']);
+        }
+        if (isset($fragments['full_name']) && is_string($fragments['full_name']) && trim($fragments['full_name']) !== '') {
+            $fullName = trim($fragments['full_name']);
+        }
+        if (isset($fragments['display_position']) && is_string($fragments['display_position'])) {
+            $displayPosition = trim($fragments['display_position']);
+        }
+
+        // Case 2: list-of-fragments form used by Yahoo.
         foreach ($fragments as $fragment) {
             if (!is_array($fragment)) {
                 continue;
@@ -262,14 +286,53 @@ class TradeHistoryService
             }
         }
 
-        if ($fullName !== '') {
-            if ($displayPosition !== '') {
-                return $fullName . ' (' . $displayPosition . ')';
+        // Fallback: recursive lookup for older/newer response shapes.
+        if ($fullName === '') {
+            $nameNode = $this->findFirstNodeByKey($fragments, 'name');
+            if (is_array($nameNode) && isset($nameNode['full']) && is_string($nameNode['full'])) {
+                $fullName = trim($nameNode['full']);
             }
-            return $fullName;
         }
 
-        return '';
+        if ($displayPosition === '') {
+            $positionNode = $this->findFirstNodeByKey($fragments, 'display_position');
+            if (is_string($positionNode)) {
+                $displayPosition = trim($positionNode);
+            }
+        }
+
+        if ($fullName === '') {
+            return '';
+        }
+
+        if ($displayPosition !== '') {
+            return $fullName . ' (' . $displayPosition . ')';
+        }
+
+        return $fullName;
+    }
+
+    /** @param mixed $node
+     *  @return mixed
+     */
+    private function findFirstNodeByKey($node, string $targetKey)
+    {
+        if (!is_array($node)) {
+            return null;
+        }
+
+        if (array_key_exists($targetKey, $node)) {
+            return $node[$targetKey];
+        }
+
+        foreach ($node as $child) {
+            $found = $this->findFirstNodeByKey($child, $targetKey);
+            if ($found !== null) {
+                return $found;
+            }
+        }
+
+        return null;
     }
 
     // -------------------------------------------------------------------------
