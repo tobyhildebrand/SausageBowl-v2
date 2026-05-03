@@ -241,7 +241,9 @@ try {
                 'seasons'  => $tradeData['seasons'],
                 'managers' => $tradeData['managers'],
                 'trades'   => $tradeData['trades'],
+                'statsRows' => $tradeData['stats_rows'],
                 'errors'   => $tradeData['errors'],
+                'statsErrors' => $tradeData['stats_errors'],
             ]);
             break;
 

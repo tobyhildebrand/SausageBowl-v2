@@ -33,8 +33,10 @@ class TradeHistoryService
      *     timestamp: int,
      *     side_a: array{team_name: string, assets: string[]},
      *     side_b: array{team_name: string, assets: string[]}
-     *   }>,
-     *   errors: array<int, string>
+    *   }>,
+    *   stats_rows: array<int, array{team_name: string, total_trades: int, free_agent_adds: int}>,
+    *   errors: array<int, string>,
+    *   stats_errors: array<int, string>
      * }
      */
     /**
@@ -78,23 +80,53 @@ class TradeHistoryService
         $seasons = [];
         $managersSet = [];
         $errors = [];
+        $statsErrors = [];
+        $statsByManager = [];
 
         foreach ($leagues as $league) {
             $season = (int) $league['season'];
             $seasons[] = $season;
+            $leagueKey = (string) ($league['league_key'] ?? '');
 
             try {
                 $raw = $this->api->get(
-                    'league/' . $league['league_key'] . '/transactions;types=trade;out=players'
+                    'league/' . $leagueKey . '/transactions;types=trade;out=players'
                 );
                 $trades = $this->parseTransactions($raw, $season);
                 foreach ($trades as $trade) {
                     $allTrades[] = $trade;
                     $managersSet[$trade['side_a']['team_name']] = true;
                     $managersSet[$trade['side_b']['team_name']] = true;
+                    $statsByManager = $this->incrementTradeStat($statsByManager, $trade['side_a']['team_name']);
+                    $statsByManager = $this->incrementTradeStat($statsByManager, $trade['side_b']['team_name']);
                 }
             } catch (Throwable $e) {
                 $errors[$season] = $e->getMessage();
+            }
+
+            try {
+                $addRaw = $this->api->get(
+                    'league/' . $leagueKey . '/transactions;out=players'
+                );
+                $addCounts = $this->parseFreeAgentAdds($addRaw);
+                foreach ($addCounts as $teamName => $count) {
+                    $teamNameString = (string) $teamName;
+                    if ($teamNameString === '' || $count <= 0) {
+                        continue;
+                    }
+
+                    $managersSet[$teamNameString] = true;
+                    if (!isset($statsByManager[$teamNameString])) {
+                        $statsByManager[$teamNameString] = [
+                            'team_name' => $teamNameString,
+                            'total_trades' => 0,
+                            'free_agent_adds' => 0,
+                        ];
+                    }
+                    $statsByManager[$teamNameString]['free_agent_adds'] += $count;
+                }
+            } catch (Throwable $e) {
+                $statsErrors[$season] = $e->getMessage();
             }
         }
 
@@ -109,6 +141,27 @@ class TradeHistoryService
         $managers = array_keys($managersSet);
         sort($managers);
 
+        foreach ($managers as $manager) {
+            if (!isset($statsByManager[$manager])) {
+                $statsByManager[$manager] = [
+                    'team_name' => $manager,
+                    'total_trades' => 0,
+                    'free_agent_adds' => 0,
+                ];
+            }
+        }
+
+        $statsRows = array_values($statsByManager);
+        usort($statsRows, static function (array $a, array $b): int {
+            if ($a['total_trades'] !== $b['total_trades']) {
+                return $b['total_trades'] <=> $a['total_trades'];
+            }
+            if ($a['free_agent_adds'] !== $b['free_agent_adds']) {
+                return $b['free_agent_adds'] <=> $a['free_agent_adds'];
+            }
+            return strcasecmp((string) $a['team_name'], (string) $b['team_name']);
+        });
+
         rsort($seasons);
         $seasons = array_values(array_unique($seasons));
 
@@ -116,8 +169,106 @@ class TradeHistoryService
             'seasons' => $seasons,
             'managers' => $managers,
             'trades' => $allTrades,
+            'stats_rows' => $statsRows,
             'errors' => $errors,
+            'stats_errors' => $statsErrors,
         ];
+    }
+
+    /**
+     * @param array<string, array{team_name: string, total_trades: int, free_agent_adds: int}> $statsByManager
+     * @return array<string, array{team_name: string, total_trades: int, free_agent_adds: int}>
+     */
+    private function incrementTradeStat(array $statsByManager, string $teamName): array
+    {
+        if ($teamName === '') {
+            return $statsByManager;
+        }
+
+        if (!isset($statsByManager[$teamName])) {
+            $statsByManager[$teamName] = [
+                'team_name' => $teamName,
+                'total_trades' => 0,
+                'free_agent_adds' => 0,
+            ];
+        }
+
+        $statsByManager[$teamName]['total_trades']++;
+        return $statsByManager;
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function parseFreeAgentAdds(array $raw): array
+    {
+        $leagueData = $raw['fantasy_content']['league'] ?? null;
+
+        if (!is_array($leagueData) || !isset($leagueData[1])) {
+            return [];
+        }
+
+        $txSection = $leagueData[1]['transactions'] ?? null;
+        if (!is_array($txSection)) {
+            return [];
+        }
+
+        $counts = [];
+
+        foreach ($txSection as $key => $value) {
+            if ($key === 'count' || !is_array($value)) {
+                continue;
+            }
+
+            $txWrapper = $value['transaction'] ?? null;
+            if (!is_array($txWrapper)) {
+                continue;
+            }
+
+            $meta = is_array($txWrapper[0] ?? null) ? $txWrapper[0] : null;
+            if ($meta === null) {
+                continue;
+            }
+
+            $type = strtolower((string) ($meta['type'] ?? ''));
+            $status = strtolower((string) ($meta['status'] ?? 'successful'));
+            if (!in_array($type, ['add', 'add/drop'], true) || !in_array($status, ['successful', ''], true)) {
+                continue;
+            }
+
+            $playersSection = $txWrapper[1]['players'] ?? ($txWrapper['players'] ?? null);
+            if (!is_array($playersSection)) {
+                continue;
+            }
+
+            foreach ($playersSection as $playerKey => $playerValue) {
+                if ($playerKey === 'count' || !is_array($playerValue)) {
+                    continue;
+                }
+
+                $playerWrapper = $playerValue['player'] ?? null;
+                if (!is_array($playerWrapper)) {
+                    continue;
+                }
+
+                $txData = $playerWrapper[1]['transaction_data'] ?? ($playerWrapper['transaction_data'] ?? []);
+                $txDataEntry = $txData;
+                if (is_array($txData) && isset($txData[0]) && is_array($txData[0])) {
+                    $txDataEntry = $txData[0];
+                }
+
+                $sourceType = strtolower((string) ($txDataEntry['source_type'] ?? ''));
+                $destinationTeamName = (string) ($txDataEntry['destination_team_name'] ?? '');
+
+                if ($sourceType !== 'freeagents' || $destinationTeamName === '') {
+                    continue;
+                }
+
+                $counts[$destinationTeamName] = (int) ($counts[$destinationTeamName] ?? 0) + 1;
+            }
+        }
+
+        return $counts;
     }
 
     /**
