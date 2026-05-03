@@ -1344,3 +1344,220 @@ a:hover {
         font-size: 0.75rem;
     }
 }
+
+/* ==========================================================================
+   Trade History
+   ========================================================================== */
+
+.trade-filters {
+    margin-bottom: 1.5rem;
+}
+
+.trade-filters__form {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+}
+
+.trade-filters__label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted, #666);
+    white-space: nowrap;
+}
+
+.trade-filters__select {
+    padding: 0.4rem 0.7rem;
+    border: 1px solid var(--border, #d0d0d0);
+    border-radius: 0.4rem;
+    background: var(--card-bg, #fff);
+    font-size: 0.9rem;
+    color: var(--text, #1a1a1a);
+    cursor: pointer;
+}
+
+.trade-filters__select:focus {
+    outline: 2px solid var(--accent, #2563eb);
+    outline-offset: 1px;
+}
+
+.trade-filters__clear {
+    font-size: 0.85rem;
+    color: var(--text-muted, #888);
+    text-decoration: underline;
+    margin-left: 0.5rem;
+}
+
+.trade-result-count {
+    font-size: 0.9rem;
+    color: var(--text-muted, #666);
+    margin-bottom: 1rem;
+}
+
+.trade-notice {
+    margin: 1rem 0;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.trade-notice--warning {
+    border: 1px solid #f0b36a;
+    background: var(--warn-bg, #fff8ed);
+    color: var(--warn-ink, #7a4500);
+}
+
+.trade-empty {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--text-muted, #888);
+    font-size: 0.95rem;
+}
+
+.trade-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.trade-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.trade-table thead th {
+    padding: 0.6rem 0.75rem;
+    text-align: left;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted, #666);
+    border-bottom: 2px solid var(--border, #e0e0e0);
+    white-space: nowrap;
+    background: var(--surface, #f8f9fa);
+}
+
+.trade-table tbody tr {
+    border-bottom: 1px solid var(--border, #eee);
+}
+
+.trade-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.trade-table tbody tr:hover {
+    background: var(--row-hover, #f5f7ff);
+}
+
+.trade-table td {
+    padding: 0.65rem 0.75rem;
+    vertical-align: middle;
+}
+
+/* Column widths */
+.trade-table__col--season {
+    white-space: nowrap;
+    font-weight: 700;
+    width: 5rem;
+    color: var(--text-secondary, #444);
+}
+
+.trade-table__col--date {
+    white-space: nowrap;
+    width: 7rem;
+    color: var(--text-muted, #666);
+    font-size: 0.85rem;
+}
+
+.trade-table__col--team {
+    font-weight: 600;
+    white-space: nowrap;
+    min-width: 8rem;
+}
+
+.trade-table__col--team.is-highlighted {
+    color: var(--accent, #2563eb);
+}
+
+.trade-table__col--team-a {
+    text-align: right;
+}
+
+.trade-table__col--team-b {
+    text-align: left;
+}
+
+.trade-table__col--assets {
+    min-width: 10rem;
+    max-width: 18rem;
+}
+
+.trade-table__col--assets-a {
+    text-align: right;
+}
+
+.trade-table__col--assets-b {
+    text-align: left;
+}
+
+.trade-table__col--arrow {
+    width: 2.5rem;
+    text-align: center;
+    padding: 0 0.25rem;
+}
+
+.trade-arrow {
+    font-size: 1.2rem;
+    color: var(--text-muted, #999);
+    line-height: 1;
+}
+
+/* Asset lists */
+.trade-assets {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.trade-table__col--assets-a .trade-assets {
+    align-items: flex-end;
+}
+
+.trade-table__col--assets-b .trade-assets {
+    align-items: flex-start;
+}
+
+.trade-asset {
+    display: inline-block;
+    background: var(--tag-bg, #eef2ff);
+    color: var(--tag-ink, #2b49a3);
+    border-radius: 0.3rem;
+    padding: 0.15rem 0.5rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+.trade-assets--empty {
+    color: var(--text-muted, #aaa);
+    font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+    .trade-table__col--date {
+        display: none;
+    }
+
+    .trade-table__col--assets {
+        min-width: 7rem;
+        max-width: 12rem;
+    }
+
+    .trade-asset {
+        white-space: normal;
+    }
+}

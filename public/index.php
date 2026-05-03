@@ -26,6 +26,7 @@ use App\Services\HistoricalInsightsService;
 use App\Services\HistoricalPointsService;
 use App\Services\HistoricalStatsService;
 use App\Services\RosterService;
+use App\Services\TradeHistoryService;
 
 // Load app config (used for display values; DB connection is lazy via DB::get())
 $config = require APP_ROOT . '/config/config.php';
@@ -214,6 +215,26 @@ try {
             http_response_code(404);
             echo 'Not found.';
             exit;
+
+        case '/trades':
+            $cache = new CacheService();
+            $ttl = 3600; // 1 hour
+
+            $tradeData = $cache->remember('trades.all', $ttl, static function () use ($config): array {
+                $oauth = new YahooOAuthClient($config['yahoo']);
+                $apiClient = new YahooApiClient($oauth);
+                $tradeService = new TradeHistoryService($apiClient, $config['yahoo']['league_key'], 2018);
+                return $tradeService->getAllTrades();
+            });
+
+            $render('trades', [
+                'title'    => 'Trade History',
+                'seasons'  => $tradeData['seasons'],
+                'managers' => $tradeData['managers'],
+                'trades'   => $tradeData['trades'],
+                'errors'   => $tradeData['errors'],
+            ]);
+            break;
 
         case '/draft-board':
             $seasonYear = (int) ($_GET['season'] ?? date('Y'));
