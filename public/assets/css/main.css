@@ -1410,6 +1410,67 @@ a:hover {
 }
 
 /* Table – inherits history-table-wrap + history-table base styles */
+
+/* Head-to-head matrix */
+.h2h-table-wrap {
+    max-width: 100%;
+}
+
+.h2h-table {
+    min-width: 980px;
+    table-layout: fixed;
+}
+
+.h2h-table .h2h-sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    min-width: 210px;
+    max-width: 260px;
+    background: #1a1f2b;
+}
+
+.h2h-table thead .h2h-sticky-col {
+    z-index: 3;
+    background: #202a3c;
+}
+
+.h2h-col-team {
+    min-width: 130px;
+    max-width: 150px;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.h2h-cell {
+    text-align: center;
+    min-width: 130px;
+}
+
+.h2h-cell--self {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.h2h-record {
+    display: inline-block;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+@media (max-width: 920px) {
+    .h2h-table {
+        min-width: 760px;
+    }
+
+    .h2h-table .h2h-sticky-col {
+        min-width: 170px;
+    }
+
+    .h2h-col-team,
+    .h2h-cell {
+        min-width: 105px;
+    }
+}
 .trade-table-wrap {
     margin-top: 1.25rem;
     max-height: 70vh;

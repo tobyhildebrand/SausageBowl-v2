@@ -22,6 +22,7 @@ use App\Helpers\View;
 use App\Services\AuthService;
 use App\Services\CacheService;
 use App\Services\DraftDeskService;
+use App\Services\HeadToHeadHistoryService;
 use App\Services\HistoricalInsightsService;
 use App\Services\HistoricalPointsService;
 use App\Services\HistoricalStatsService;
@@ -208,6 +209,27 @@ try {
                 'history' => $history,
                 'points'  => $points,
                 'insights' => $insights,
+            ]);
+            break;
+
+        case '/head-to-head':
+            $cache = new CacheService();
+            $ttl = 3600; // 1 hour
+
+            $h2h = $cache->remember('history.head_to_head', $ttl, static function () use ($config): array {
+                $oauth = new YahooOAuthClient($config['yahoo']);
+                $apiClient = new YahooApiClient($oauth);
+                $service = new HeadToHeadHistoryService($apiClient, $config['yahoo']['league_key'], 2018);
+                return $service->getHeadToHeadMatrix();
+            });
+
+            $render('head_to_head', [
+                'title' => 'Historic Head-to-Head',
+                'seasons' => $h2h['seasons'] ?? [],
+                'teams' => $h2h['teams'] ?? [],
+                'matrix' => $h2h['matrix'] ?? [],
+                'totalGames' => $h2h['total_games'] ?? 0,
+                'errors' => $h2h['errors'] ?? [],
             ]);
             break;
 
