@@ -1412,6 +1412,14 @@ a:hover {
 /* Table – inherits history-table-wrap + history-table base styles */
 .trade-table-wrap {
     margin-top: 1.25rem;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.trade-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 6;
 }
 
 .trade-table td {
@@ -1470,6 +1478,16 @@ a:hover {
     gap: 0.2rem;
 }
 
+.trade-assets li {
+    list-style: none !important;
+    margin: 0;
+    padding: 0;
+}
+
+.trade-assets li::marker {
+    content: '';
+}
+
 .trade-assets--right {
     align-items: flex-end;
 }
@@ -1479,12 +1497,13 @@ a:hover {
 }
 
 .trade-asset {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
     background: rgba(41, 95, 80, 0.08);
     color: #234e42;
     border: 1px solid rgba(41, 95, 80, 0.18);
     border-radius: 0.3rem;
-    padding: 0.1rem 0.45rem;
+    padding: 0.15rem 0.45rem;
     font-size: 0.82rem;
     white-space: nowrap;
 }

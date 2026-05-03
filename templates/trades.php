@@ -6,6 +6,7 @@
 
 $filterSeason  = (int)   ($_GET['season']  ?? 0);
 $filterManager = (string)($_GET['manager'] ?? '');
+$filterFromManager = (string)($_GET['from_manager'] ?? '');
 $totalTrades   = count($trades);
 ?>
 
@@ -26,11 +27,14 @@ $totalTrades   = count($trades);
 <?php endif; ?>
 
 <?php
-$filtered = array_filter($trades, static function (array $trade) use ($filterSeason, $filterManager): bool {
+$filtered = array_filter($trades, static function (array $trade) use ($filterSeason, $filterManager, $filterFromManager): bool {
     if ($filterSeason !== 0 && $trade['season'] !== $filterSeason) {
         return false;
     }
-    if ($filterManager !== '' && $trade['side_a']['team_name'] !== $filterManager && $trade['side_b']['team_name'] !== $filterManager) {
+    if ($filterManager !== '' && $trade['side_a']['team_name'] !== $filterManager) {
+        return false;
+    }
+    if ($filterFromManager !== '' && $trade['side_b']['team_name'] !== $filterFromManager) {
         return false;
     }
     return true;
@@ -77,7 +81,15 @@ $filteredCount = count($filtered);
                 <th class="trade-col--assets-a">Gave away</th>
                 <th class="trade-col--arrow"></th>
                 <th class="trade-col--assets-b">Received</th>
-                <th class="trade-col--team-b">Manager</th>
+                <th class="trade-col--team-b">
+                    <div class="trade-th__label">From Manager</div>
+                    <select class="trade-th__select" name="from_manager" onchange="document.getElementById('trade-filter-form').submit()">
+                        <option value=""<?= $filterFromManager === '' ? ' selected' : '' ?>>All</option>
+                        <?php foreach ($managers as $mgr): ?>
+                            <option value="<?= htmlspecialchars($mgr) ?>"<?= $filterFromManager === $mgr ? ' selected' : '' ?>><?= htmlspecialchars($mgr) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </th>
             </tr>
         </thead>
         <tbody>
@@ -87,7 +99,7 @@ $filteredCount = count($filtered);
             $assetsA = $sideA['assets'];
             $assetsB = $sideB['assets'];
             $highlightA = $filterManager !== '' && $sideA['team_name'] === $filterManager;
-            $highlightB = $filterManager !== '' && $sideB['team_name'] === $filterManager;
+            $highlightB = $filterFromManager !== '' && $sideB['team_name'] === $filterFromManager;
         ?>
             <tr>
                 <td><?= (int) $trade['season'] ?></td>
@@ -134,7 +146,7 @@ $filteredCount = count($filtered);
     </table>
 </div>
 </form>
-<?php if ($filterSeason !== 0 || $filterManager !== ''): ?>
+<?php if ($filterSeason !== 0 || $filterManager !== '' || $filterFromManager !== ''): ?>
     <p class="trade-result-count"><a href="/index.php?r=trades">Clear filters</a></p>
 <?php endif; ?>
 
