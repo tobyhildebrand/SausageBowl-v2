@@ -10,6 +10,8 @@ use Throwable;
 
 class TradeHistoryService
 {
+    private const EXCLUDED_TEAM_NAME_PARTS = ['mordlustig', 'tru. crew', 'tru crew'];
+
     private YahooApiClient $api;
     private string $currentLeagueKey;
     private int $startSeason;
@@ -82,6 +84,8 @@ class TradeHistoryService
         $errors = [];
         $statsErrors = [];
         $statsByManager = [];
+        $teamDirectoryById = [];
+        $teamLookupBySeason = [];
 
         foreach ($leagues as $league) {
             $season = (int) $league['season'];
@@ -89,16 +93,45 @@ class TradeHistoryService
             $leagueKey = (string) ($league['league_key'] ?? '');
 
             try {
+                $standingsRaw = $this->api->get('league/' . $leagueKey . '/standings');
+                $seasonTeams = $this->parseStandingsDirectory($standingsRaw);
+
+                foreach ($seasonTeams as $team) {
+                    $identity = (string) $team['identity'];
+                    $teamLookupBySeason[$season][$this->normalizeName((string) $team['name'])] = $identity;
+
+                    if (!isset($teamDirectoryById[$identity])) {
+                        $teamDirectoryById[$identity] = [
+                            'team_name' => (string) $team['name'],
+                            'logo_url' => (string) $team['logo_url'],
+                            'last_seen_season' => $season,
+                        ];
+                    } elseif ($season >= (int) ($teamDirectoryById[$identity]['last_seen_season'] ?? 0)) {
+                        $teamDirectoryById[$identity]['team_name'] = (string) $team['name'];
+                        $teamDirectoryById[$identity]['logo_url'] = (string) $team['logo_url'];
+                        $teamDirectoryById[$identity]['last_seen_season'] = $season;
+                    }
+                }
+            } catch (Throwable $e) {
+                // Best effort only. Trade data can still render without standings identity mapping.
+            }
+
+            try {
                 $raw = $this->api->get(
                     'league/' . $leagueKey . '/transactions;types=trade;out=players'
                 );
                 $trades = $this->parseTransactions($raw, $season);
                 foreach ($trades as $trade) {
-                    $allTrades[] = $trade;
-                    $managersSet[$trade['side_a']['team_name']] = true;
-                    $managersSet[$trade['side_b']['team_name']] = true;
-                    $statsByManager = $this->incrementTradeStat($statsByManager, $trade['side_a']['team_name']);
-                    $statsByManager = $this->incrementTradeStat($statsByManager, $trade['side_b']['team_name']);
+                    $resolvedTrade = $this->resolveTradeTeams($trade, $season, $teamLookupBySeason, $teamDirectoryById);
+                    if ($resolvedTrade === null) {
+                        continue;
+                    }
+
+                    $allTrades[] = $resolvedTrade;
+                    $managersSet[$resolvedTrade['side_a']['team_name']] = true;
+                    $managersSet[$resolvedTrade['side_b']['team_name']] = true;
+                    $statsByManager = $this->incrementTradeStat($statsByManager, $resolvedTrade['side_a']['team_name']);
+                    $statsByManager = $this->incrementTradeStat($statsByManager, $resolvedTrade['side_b']['team_name']);
                 }
             } catch (Throwable $e) {
                 $errors[$season] = $e->getMessage();
@@ -110,8 +143,8 @@ class TradeHistoryService
                 );
                 $addCounts = $this->parseFreeAgentAdds($addRaw);
                 foreach ($addCounts as $teamName => $count) {
-                    $teamNameString = (string) $teamName;
-                    if ($teamNameString === '' || $count <= 0) {
+                    $teamNameString = $this->resolveCanonicalTeamName((string) $teamName, $season, $teamLookupBySeason, $teamDirectoryById);
+                    if ($teamNameString === null || $teamNameString === '' || $count <= 0) {
                         continue;
                     }
 
@@ -269,6 +302,158 @@ class TradeHistoryService
         }
 
         return $counts;
+    }
+
+    /**
+     * @param array{season: int, date: string, timestamp: int, side_a: array{team_name: string, assets: string[]}, side_b: array{team_name: string, assets: string[]}} $trade
+     * @param array<int, array<string, string>> $teamLookupBySeason
+     * @param array<string, array{team_name: string, logo_url: string, last_seen_season: int}> $teamDirectoryById
+     * @return array{season: int, date: string, timestamp: int, side_a: array{team_name: string, assets: string[]}, side_b: array{team_name: string, assets: string[]}}|null
+     */
+    private function resolveTradeTeams(array $trade, int $season, array $teamLookupBySeason, array $teamDirectoryById): ?array
+    {
+        $sideATeamName = $this->resolveCanonicalTeamName((string) ($trade['side_a']['team_name'] ?? ''), $season, $teamLookupBySeason, $teamDirectoryById);
+        $sideBTeamName = $this->resolveCanonicalTeamName((string) ($trade['side_b']['team_name'] ?? ''), $season, $teamLookupBySeason, $teamDirectoryById);
+
+        if ($sideATeamName === null || $sideBTeamName === null) {
+            return null;
+        }
+
+        $trade['side_a']['team_name'] = $sideATeamName;
+        $trade['side_b']['team_name'] = $sideBTeamName;
+
+        return $trade;
+    }
+
+    /**
+     * @param array<int, array<string, string>> $teamLookupBySeason
+     * @param array<string, array{team_name: string, logo_url: string, last_seen_season: int}> $teamDirectoryById
+     */
+    private function resolveCanonicalTeamName(string $rawTeamName, int $season, array $teamLookupBySeason, array $teamDirectoryById): ?string
+    {
+        if ($rawTeamName === '') {
+            return null;
+        }
+
+        if ($this->isExcludedTeamName($rawTeamName)) {
+            return null;
+        }
+
+        $normalizedName = $this->normalizeName($rawTeamName);
+        $identity = $teamLookupBySeason[$season][$normalizedName] ?? null;
+
+        if ($identity !== null && isset($teamDirectoryById[$identity]['team_name'])) {
+            return (string) $teamDirectoryById[$identity]['team_name'];
+        }
+
+        return $rawTeamName;
+    }
+
+    /**
+     * @return array<int, array{identity: string, name: string, logo_url: string}>
+     */
+    private function parseStandingsDirectory(array $raw): array
+    {
+        $leagueData = $raw['fantasy_content']['league'] ?? null;
+
+        if (!is_array($leagueData) || !isset($leagueData[1])) {
+            return [];
+        }
+
+        $standingsSection = $leagueData[1]['standings'] ?? [];
+        $teamsRaw = [];
+
+        if (isset($standingsSection['teams']) && is_array($standingsSection['teams'])) {
+            $teamsRaw = $standingsSection['teams'];
+        } elseif (isset($standingsSection[0]['teams']) && is_array($standingsSection[0]['teams'])) {
+            $teamsRaw = $standingsSection[0]['teams'];
+        }
+
+        if ($teamsRaw === []) {
+            return [];
+        }
+
+        $teams = [];
+
+        foreach ($teamsRaw as $key => $value) {
+            if ($key === 'count') {
+                continue;
+            }
+
+            $teamData = $value['team'] ?? null;
+            if (!is_array($teamData)) {
+                continue;
+            }
+
+            $meta = $teamData[0] ?? [];
+            if (!is_array($meta)) {
+                continue;
+            }
+
+            $flat = $this->flattenMeta($meta);
+            $name = (string) ($flat['name'] ?? 'Unknown Team');
+            if ($this->isExcludedTeamName($name)) {
+                continue;
+            }
+
+            $logoUrl = '';
+            if (isset($flat['team_logos'][0]['team_logo']['url']) && is_string($flat['team_logos'][0]['team_logo']['url'])) {
+                $logoUrl = $flat['team_logos'][0]['team_logo']['url'];
+            }
+
+            $guid = '';
+            if (isset($flat['managers'][0]['manager']['guid']) && is_string($flat['managers'][0]['manager']['guid'])) {
+                $guid = $flat['managers'][0]['manager']['guid'];
+            }
+
+            $identity = $guid !== ''
+                ? 'guid:' . $guid
+                : 'name:' . $this->normalizeName($name);
+
+            $teams[] = [
+                'identity' => $identity,
+                'name' => $name,
+                'logo_url' => $logoUrl,
+            ];
+        }
+
+        return $teams;
+    }
+
+    /** @return array<string, mixed> */
+    private function flattenMeta(array $meta): array
+    {
+        $flat = [];
+
+        foreach ($meta as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            foreach ($item as $key => $value) {
+                $flat[$key] = $value;
+            }
+        }
+
+        return $flat;
+    }
+
+    private function normalizeName(string $name): string
+    {
+        return strtolower(trim(preg_replace('/\s+/', ' ', $name) ?? $name));
+    }
+
+    private function isExcludedTeamName(string $teamName): bool
+    {
+        $normalized = strtolower($teamName);
+
+        foreach (self::EXCLUDED_TEAM_NAME_PARTS as $part) {
+            if ($part !== '' && strpos($normalized, $part) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
