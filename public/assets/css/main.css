@@ -1470,22 +1470,11 @@ a:hover {
 
 /* Asset pill lists */
 .trade-assets {
-    list-style: none;
     margin: 0;
     padding: 0;
     display: flex;
     flex-direction: column;
     gap: 0.2rem;
-}
-
-.trade-assets li {
-    list-style: none !important;
-    margin: 0;
-    padding: 0;
-}
-
-.trade-assets li::marker {
-    content: '';
 }
 
 .trade-assets--right {

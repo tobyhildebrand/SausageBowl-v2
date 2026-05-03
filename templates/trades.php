@@ -111,11 +111,11 @@ $filteredCount = count($filtered);
 
                 <td class="trade-col--assets-a">
                     <?php if ($assetsA !== []): ?>
-                        <ul class="trade-assets trade-assets--right">
+                        <div class="trade-assets trade-assets--right">
                             <?php foreach ($assetsA as $asset): ?>
-                                <li class="trade-asset"><?= htmlspecialchars($asset) ?></li>
+                                <span class="trade-asset"><?= htmlspecialchars($asset) ?></span>
                             <?php endforeach; ?>
-                        </ul>
+                        </div>
                     <?php else: ?>
                         <span class="trade-assets--empty">—</span>
                     <?php endif; ?>
@@ -127,11 +127,11 @@ $filteredCount = count($filtered);
 
                 <td class="trade-col--assets-b">
                     <?php if ($assetsB !== []): ?>
-                        <ul class="trade-assets trade-assets--left">
+                        <div class="trade-assets trade-assets--left">
                             <?php foreach ($assetsB as $asset): ?>
-                                <li class="trade-asset"><?= htmlspecialchars($asset) ?></li>
+                                <span class="trade-asset"><?= htmlspecialchars($asset) ?></span>
                             <?php endforeach; ?>
-                        </ul>
+                        </div>
                     <?php else: ?>
                         <span class="trade-assets--empty">—</span>
                     <?php endif; ?>
