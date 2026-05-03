@@ -213,7 +213,13 @@ class TradeHistoryService
 
     /**
      * Extract a human-readable asset name from the Yahoo player meta fragment array.
-     * Each fragment in playerWrapper[0] is an associative array with one or more fields.
+     *
+     * Yahoo returns player meta as a list of single-key arrays, e.g.:
+     *   [0] => ["player_key" => "..."]
+     *   [1] => ["player_id" => "..."]
+     *   [2] => ["name" => ["full" => "Patrick Mahomes", ...]]
+     *   [3] => ["display_position" => "QB"]
+     *   ...
      *
      * @param mixed $fragments
      */
@@ -225,30 +231,26 @@ class TradeHistoryService
 
         $fullName = '';
         $displayPosition = '';
-        $isPick = false;
 
         foreach ($fragments as $fragment) {
             if (!is_array($fragment)) {
                 continue;
             }
 
-            if (isset($fragment['full_name']) && (string) $fragment['full_name'] !== '') {
-                $fullName = (string) $fragment['full_name'];
+            // Name is nested: { "name": { "full": "Patrick Mahomes" } }
+            if (isset($fragment['name']['full']) && (string) $fragment['name']['full'] !== '') {
+                $fullName = (string) $fragment['name']['full'];
             }
 
-            if (isset($fragment['display_position'])) {
+            if (isset($fragment['display_position']) && (string) $fragment['display_position'] !== '') {
                 $displayPosition = (string) $fragment['display_position'];
             }
-
-            // Draft picks in Yahoo have a specific flag or name pattern
-            if (isset($fragment['is_undroppable'])) {
-                // not a pick indicator, skip
-            }
-
-            // Sometimes pick name comes directly as full_name like "2024 Pick"
         }
 
         if ($fullName !== '') {
+            if ($displayPosition !== '') {
+                return $fullName . ' (' . $displayPosition . ')';
+            }
             return $fullName;
         }
 

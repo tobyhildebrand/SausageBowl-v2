@@ -1349,10 +1349,7 @@ a:hover {
    Trade History
    ========================================================================== */
 
-.trade-filters {
-    margin-bottom: 1.5rem;
-}
-
+/* Filter bar – lives inside a .card */
 .trade-filters__form {
     display: flex;
     align-items: center;
@@ -1363,35 +1360,35 @@ a:hover {
 .trade-filters__label {
     font-size: 0.85rem;
     font-weight: 600;
-    color: var(--text-muted, #666);
+    color: var(--ink-soft);
     white-space: nowrap;
 }
 
 .trade-filters__select {
-    padding: 0.4rem 0.7rem;
-    border: 1px solid var(--border, #d0d0d0);
+    padding: 0.35rem 0.65rem;
+    border: 1px solid #cdbda5;
     border-radius: 0.4rem;
-    background: var(--card-bg, #fff);
+    background: #fff;
     font-size: 0.9rem;
-    color: var(--text, #1a1a1a);
+    color: #1a1a1a;
     cursor: pointer;
 }
 
 .trade-filters__select:focus {
-    outline: 2px solid var(--accent, #2563eb);
+    outline: 2px solid var(--brand-red);
     outline-offset: 1px;
 }
 
 .trade-filters__clear {
     font-size: 0.85rem;
-    color: var(--text-muted, #888);
+    color: var(--ink-soft);
     text-decoration: underline;
-    margin-left: 0.5rem;
+    margin-left: 0.25rem;
 }
 
 .trade-result-count {
     font-size: 0.9rem;
-    color: var(--text-muted, #666);
+    color: var(--ink-soft);
     margin-bottom: 1rem;
 }
 
@@ -1404,117 +1401,69 @@ a:hover {
 
 .trade-notice--warning {
     border: 1px solid #f0b36a;
-    background: var(--warn-bg, #fff8ed);
-    color: var(--warn-ink, #7a4500);
+    background: #fff8ed;
+    color: #7a4500;
 }
 
 .trade-empty {
     padding: 2rem 1rem;
     text-align: center;
-    color: var(--text-muted, #888);
+    color: var(--ink-soft);
     font-size: 0.95rem;
 }
 
+/* Table – inherits history-table-wrap + history-table base styles */
 .trade-table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-.trade-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9rem;
-}
-
-.trade-table thead th {
-    padding: 0.6rem 0.75rem;
-    text-align: left;
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--text-muted, #666);
-    border-bottom: 2px solid var(--border, #e0e0e0);
-    white-space: nowrap;
-    background: var(--surface, #f8f9fa);
-}
-
-.trade-table tbody tr {
-    border-bottom: 1px solid var(--border, #eee);
-}
-
-.trade-table tbody tr:last-child {
-    border-bottom: none;
-}
-
-.trade-table tbody tr:hover {
-    background: var(--row-hover, #f5f7ff);
+    margin-top: 1.25rem;
 }
 
 .trade-table td {
-    padding: 0.65rem 0.75rem;
     vertical-align: middle;
+    white-space: nowrap;
 }
 
-/* Column widths */
-.trade-table__col--season {
-    white-space: nowrap;
-    font-weight: 700;
-    width: 5rem;
-    color: var(--text-secondary, #444);
-}
-
-.trade-table__col--date {
-    white-space: nowrap;
-    width: 7rem;
-    color: var(--text-muted, #666);
+/* Column alignment overrides */
+.trade-col--date {
+    color: var(--ink-soft);
     font-size: 0.85rem;
 }
 
-.trade-table__col--team {
+.trade-col--team-a {
+    text-align: right;
     font-weight: 600;
-    white-space: nowrap;
-    min-width: 8rem;
 }
 
-.trade-table__col--team.is-highlighted {
-    color: var(--accent, #2563eb);
-}
-
-.trade-table__col--team-a {
-    text-align: right;
-}
-
-.trade-table__col--team-b {
+.trade-col--team-b {
     text-align: left;
+    font-weight: 600;
 }
 
-.trade-table__col--assets {
-    min-width: 10rem;
-    max-width: 18rem;
+.trade-team--highlight {
+    color: var(--brand-red);
 }
 
-.trade-table__col--assets-a {
+.trade-col--assets-a {
     text-align: right;
+    min-width: 9rem;
 }
 
-.trade-table__col--assets-b {
+.trade-col--assets-b {
     text-align: left;
+    min-width: 9rem;
 }
 
-.trade-table__col--arrow {
+.trade-col--arrow {
     width: 2.5rem;
     text-align: center;
-    padding: 0 0.25rem;
+    padding: 0 0.25rem !important;
 }
 
 .trade-arrow {
-    font-size: 1.2rem;
-    color: var(--text-muted, #999);
-    line-height: 1;
+    font-size: 1.1rem;
+    color: #aaa;
 }
 
-/* Asset lists */
+/* Asset pill lists */
 .trade-assets {
     list-style: none;
     margin: 0;
@@ -1524,37 +1473,33 @@ a:hover {
     gap: 0.2rem;
 }
 
-.trade-table__col--assets-a .trade-assets {
+.trade-assets--right {
     align-items: flex-end;
 }
 
-.trade-table__col--assets-b .trade-assets {
+.trade-assets--left {
     align-items: flex-start;
 }
 
 .trade-asset {
     display: inline-block;
-    background: var(--tag-bg, #eef2ff);
-    color: var(--tag-ink, #2b49a3);
+    background: rgba(41, 95, 80, 0.08);
+    color: #234e42;
+    border: 1px solid rgba(41, 95, 80, 0.18);
     border-radius: 0.3rem;
-    padding: 0.15rem 0.5rem;
+    padding: 0.1rem 0.45rem;
     font-size: 0.82rem;
     white-space: nowrap;
 }
 
 .trade-assets--empty {
-    color: var(--text-muted, #aaa);
+    color: #bbb;
     font-size: 0.85rem;
 }
 
 @media (max-width: 768px) {
-    .trade-table__col--date {
+    .trade-col--date {
         display: none;
-    }
-
-    .trade-table__col--assets {
-        min-width: 7rem;
-        max-width: 12rem;
     }
 
     .trade-asset {

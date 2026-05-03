@@ -25,7 +25,7 @@ $totalTrades   = count($trades);
     </div>
 <?php endif; ?>
 
-<div class="trade-filters">
+<section class="card">
     <form method="get" action="" class="trade-filters__form">
         <input type="hidden" name="r" value="trades">
 
@@ -49,10 +49,9 @@ $totalTrades   = count($trades);
             <a href="/index.php?r=trades" class="trade-filters__clear">Clear filters</a>
         <?php endif; ?>
     </form>
-</div>
+</section>
 
 <?php
-// Apply filters
 $filtered = array_filter($trades, static function (array $trade) use ($filterSeason, $filterManager): bool {
     if ($filterSeason !== 0 && $trade['season'] !== $filterSeason) {
         return false;
@@ -82,17 +81,17 @@ $filteredCount = count($filtered);
     </div>
 <?php else: ?>
 
-<div class="trade-table-wrap">
-    <table class="trade-table">
+<div class="history-table-wrap trade-table-wrap">
+    <table class="history-table trade-table">
         <thead>
             <tr>
-                <th class="trade-table__col--season">Season</th>
-                <th class="trade-table__col--date">Date</th>
-                <th class="trade-table__col--team trade-table__col--team-a">Manager</th>
-                <th class="trade-table__col--assets trade-table__col--assets-a">Sent</th>
-                <th class="trade-table__col--arrow" aria-label="Trade direction"></th>
-                <th class="trade-table__col--assets trade-table__col--assets-b">Sent</th>
-                <th class="trade-table__col--team trade-table__col--team-b">Manager</th>
+                <th>Season</th>
+                <th>Date</th>
+                <th class="trade-col--team-a">Manager</th>
+                <th class="trade-col--assets-a">Gave away</th>
+                <th class="trade-col--arrow"></th>
+                <th class="trade-col--assets-b">Gave away</th>
+                <th class="trade-col--team-b">Manager</th>
             </tr>
         </thead>
         <tbody>
@@ -104,17 +103,17 @@ $filteredCount = count($filtered);
             $highlightA = $filterManager !== '' && $sideA['team_name'] === $filterManager;
             $highlightB = $filterManager !== '' && $sideB['team_name'] === $filterManager;
         ?>
-            <tr class="trade-row">
-                <td class="trade-table__col--season"><?= (int) $trade['season'] ?></td>
-                <td class="trade-table__col--date"><?= htmlspecialchars($trade['date'] ?? '—') ?></td>
+            <tr>
+                <td><?= (int) $trade['season'] ?></td>
+                <td class="trade-col--date"><?= htmlspecialchars($trade['date'] ?? '—') ?></td>
 
-                <td class="trade-table__col--team trade-table__col--team-a<?= $highlightA ? ' is-highlighted' : '' ?>">
+                <td class="trade-col--team-a<?= $highlightA ? ' trade-team--highlight' : '' ?>">
                     <?= htmlspecialchars($sideA['team_name']) ?>
                 </td>
 
-                <td class="trade-table__col--assets trade-table__col--assets-a">
+                <td class="trade-col--assets-a">
                     <?php if ($assetsA !== []): ?>
-                        <ul class="trade-assets">
+                        <ul class="trade-assets trade-assets--right">
                             <?php foreach ($assetsA as $asset): ?>
                                 <li class="trade-asset"><?= htmlspecialchars($asset) ?></li>
                             <?php endforeach; ?>
@@ -124,13 +123,13 @@ $filteredCount = count($filtered);
                     <?php endif; ?>
                 </td>
 
-                <td class="trade-table__col--arrow">
+                <td class="trade-col--arrow">
                     <span class="trade-arrow" aria-hidden="true">⇄</span>
                 </td>
 
-                <td class="trade-table__col--assets trade-table__col--assets-b">
+                <td class="trade-col--assets-b">
                     <?php if ($assetsB !== []): ?>
-                        <ul class="trade-assets">
+                        <ul class="trade-assets trade-assets--left">
                             <?php foreach ($assetsB as $asset): ?>
                                 <li class="trade-asset"><?= htmlspecialchars($asset) ?></li>
                             <?php endforeach; ?>
@@ -140,7 +139,7 @@ $filteredCount = count($filtered);
                     <?php endif; ?>
                 </td>
 
-                <td class="trade-table__col--team trade-table__col--team-b<?= $highlightB ? ' is-highlighted' : '' ?>">
+                <td class="trade-col--team-b<?= $highlightB ? ' trade-team--highlight' : '' ?>">
                     <?= htmlspecialchars($sideB['team_name']) ?>
                 </td>
             </tr>
