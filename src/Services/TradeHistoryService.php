@@ -302,23 +302,19 @@ class TradeHistoryService
                 continue;
             }
 
-            $type = strtolower((string) ($meta['type'] ?? ''));
             $status = strtolower((string) ($meta['status'] ?? 'successful'));
-            $isWaiver = $type === 'waiver';
-            $isFaAdd = in_array($type, ['add', 'add/drop'], true);
-            if (!$isWaiver && !$isFaAdd) {
-                continue;
-            }
             if (!in_array($status, ['successful', ''], true)) {
                 continue;
             }
 
-            $faabBid = $isWaiver ? (int) ($meta['faab_bid'] ?? 0) : 0;
+            $faabBid = (int) ($meta['faab_bid'] ?? 0);
 
             $playersSection = $txWrapper[1]['players'] ?? ($txWrapper['players'] ?? null);
             if (!is_array($playersSection)) {
                 continue;
             }
+
+            $faabAppliedTeams = [];
 
             foreach ($playersSection as $playerKey => $playerValue) {
                 if ($playerKey === 'count' || !is_array($playerValue)) {
@@ -336,19 +332,31 @@ class TradeHistoryService
                     $txDataEntry = $txData[0];
                 }
 
+                $txType = strtolower((string) ($txDataEntry['type'] ?? ''));
                 $sourceType = strtolower((string) ($txDataEntry['source_type'] ?? ''));
                 $destinationTeamName = (string) ($txDataEntry['destination_team_name'] ?? '');
 
-                if ($sourceType !== 'freeagents' || $destinationTeamName === '') {
+                if ($txType !== 'add' || $destinationTeamName === '') {
+                    continue;
+                }
+
+                $isWaiverAdd = in_array($sourceType, ['waiver', 'waivers'], true);
+                $isFreeAgentAdd = in_array($sourceType, ['freeagent', 'freeagents'], true);
+
+                if (!$isWaiverAdd && !$isFreeAgentAdd) {
                     continue;
                 }
 
                 if (!isset($counts[$destinationTeamName])) {
                     $counts[$destinationTeamName] = ['adds' => 0, 'waiver_adds' => 0, 'faab' => 0];
                 }
-                if ($isWaiver) {
+
+                if ($isWaiverAdd) {
                     $counts[$destinationTeamName]['waiver_adds']++;
-                    $counts[$destinationTeamName]['faab'] += $faabBid;
+                    if ($faabBid > 0 && !isset($faabAppliedTeams[$destinationTeamName])) {
+                        $counts[$destinationTeamName]['faab'] += $faabBid;
+                        $faabAppliedTeams[$destinationTeamName] = true;
+                    }
                 } else {
                     $counts[$destinationTeamName]['adds']++;
                 }
