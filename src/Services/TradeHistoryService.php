@@ -37,6 +37,21 @@ class TradeHistoryService
      *   errors: array<int, string>
      * }
      */
+    /**
+     * Return the raw Yahoo API response for the most recent season's transactions.
+     * Used only for debugging asset parsing.
+     */
+    public function getRawTransactions(): array
+    {
+        $leagues = $this->collectLeagueChain();
+        if ($leagues === []) {
+            return [];
+        }
+        usort($leagues, static fn(array $a, array $b): int => $b['season'] <=> $a['season']);
+        $league = $leagues[0];
+        return $this->api->get('league/' . $league['league_key'] . '/transactions;types=trade');
+    }
+
     public function getAllTrades(): array
     {
         $leagues = $this->collectLeagueChain();

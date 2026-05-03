@@ -1350,40 +1350,37 @@ a:hover {
    ========================================================================== */
 
 /* Filter bar – lives inside a .card */
-.trade-filters__form {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5rem 1rem;
+/* Inline header filters */
+.trade-th__label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.75);
+    margin-bottom: 0.3rem;
 }
 
-.trade-filters__label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--ink-soft);
-    white-space: nowrap;
-}
-
-.trade-filters__select {
-    padding: 0.35rem 0.65rem;
-    border: 1px solid #cdbda5;
-    border-radius: 0.4rem;
-    background: #fff;
-    font-size: 0.9rem;
-    color: #1a1a1a;
+.trade-th__select {
+    display: block;
+    width: 100%;
+    padding: 0.25rem 0.4rem;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 0.3rem;
+    background: rgba(0, 0, 0, 0.2);
+    font-size: 0.8rem;
+    color: #fff;
     cursor: pointer;
+    appearance: auto;
 }
 
-.trade-filters__select:focus {
-    outline: 2px solid var(--brand-red);
+.trade-th__select:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.6);
     outline-offset: 1px;
 }
 
-.trade-filters__clear {
-    font-size: 0.85rem;
-    color: var(--ink-soft);
-    text-decoration: underline;
-    margin-left: 0.25rem;
+.trade-th__select option {
+    background: #234e42;
+    color: #fff;
 }
 
 .trade-result-count {

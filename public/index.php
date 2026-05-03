@@ -216,6 +216,19 @@ try {
             echo 'Not found.';
             exit;
 
+        case '/trades/debug':
+            if (!$config['app']['debug']) {
+                http_response_code(403);
+                echo 'Debug mode is disabled.';
+                exit;
+            }
+            $oauth = new YahooOAuthClient($config['yahoo']);
+            $apiClient = new YahooApiClient($oauth);
+            $tradeService = new TradeHistoryService($apiClient, $config['yahoo']['league_key'], 2018);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($tradeService->getRawTransactions(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+            exit;
+
         case '/trades':
             $cache = new CacheService();
             $ttl = 3600; // 1 hour

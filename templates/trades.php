@@ -66,9 +66,6 @@ $filteredCount = count($filtered);
 ?>
 
 <?php if ($filterSeason !== 0 || $filterManager !== ''): ?>
-    <p class="trade-result-count">
-        Showing <strong><?= $filteredCount ?></strong> trade<?= $filteredCount !== 1 ? 's' : '' ?><?php if ($filterManager !== ''): ?> involving <strong><?= htmlspecialchars($filterManager) ?></strong><?php endif; ?><?php if ($filterSeason !== 0): ?> in <strong><?= $filterSeason ?></strong><?php endif; ?>.
-    </p>
 <?php endif; ?>
 
 <?php if ($filteredCount === 0): ?>
@@ -81,16 +78,34 @@ $filteredCount = count($filtered);
     </div>
 <?php else: ?>
 
+<form method="get" action="" id="trade-filter-form">
+    <input type="hidden" name="r" value="trades">
 <div class="history-table-wrap trade-table-wrap">
     <table class="history-table trade-table">
         <thead>
             <tr>
-                <th>Season</th>
+                <th class="trade-th--season">
+                    <div class="trade-th__label">Season</div>
+                    <select class="trade-th__select" name="season" onchange="document.getElementById('trade-filter-form').submit()">
+                        <option value="0"<?= $filterSeason === 0 ? ' selected' : '' ?>>All</option>
+                        <?php foreach ($seasons as $s): ?>
+                            <option value="<?= (int) $s ?>"<?= $filterSeason === (int) $s ? ' selected' : '' ?>><?= (int) $s ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </th>
                 <th>Date</th>
-                <th class="trade-col--team-a">Manager</th>
+                <th class="trade-col--team-a">
+                    <div class="trade-th__label">Manager</div>
+                    <select class="trade-th__select" name="manager" onchange="document.getElementById('trade-filter-form').submit()">
+                        <option value=""<?= $filterManager === '' ? ' selected' : '' ?>>All</option>
+                        <?php foreach ($managers as $mgr): ?>
+                            <option value="<?= htmlspecialchars($mgr) ?>"<?= $filterManager === $mgr ? ' selected' : '' ?>><?= htmlspecialchars($mgr) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </th>
                 <th class="trade-col--assets-a">Gave away</th>
                 <th class="trade-col--arrow"></th>
-                <th class="trade-col--assets-b">Gave away</th>
+                <th class="trade-col--assets-b">Received</th>
                 <th class="trade-col--team-b">Manager</th>
             </tr>
         </thead>
@@ -147,5 +162,9 @@ $filteredCount = count($filtered);
         </tbody>
     </table>
 </div>
+</form>
+<?php if ($filterSeason !== 0 || $filterManager !== ''): ?>
+    <p class="trade-result-count"><a href="/index.php?r=trades">Clear filters</a></p>
+<?php endif; ?>
 
 <?php endif; ?>
