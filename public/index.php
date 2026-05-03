@@ -231,15 +231,10 @@ try {
             exit;
 
         case '/trades':
-            $cache = new CacheService();
-            $ttl = 3600; // 1 hour
-
-            $tradeData = $cache->remember('trades.all', $ttl, static function () use ($config): array {
-                $oauth = new YahooOAuthClient($config['yahoo']);
-                $apiClient = new YahooApiClient($oauth);
-                $tradeService = new TradeHistoryService($apiClient, $config['yahoo']['league_key'], 2018);
-                return $tradeService->getAllTrades();
-            });
+            $oauth = new YahooOAuthClient($config['yahoo']);
+            $apiClient = new YahooApiClient($oauth);
+            $tradeService = new TradeHistoryService($apiClient, $config['yahoo']['league_key'], 2018);
+            $tradeData = $tradeService->getAllTrades();
 
             $render('trades', [
                 'title'    => 'Trade History',

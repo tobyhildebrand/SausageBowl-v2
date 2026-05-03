@@ -25,32 +25,6 @@ $totalTrades   = count($trades);
     </div>
 <?php endif; ?>
 
-<section class="card">
-    <form method="get" action="" class="trade-filters__form">
-        <input type="hidden" name="r" value="trades">
-
-        <label class="trade-filters__label" for="filter-season">Season</label>
-        <select class="trade-filters__select" id="filter-season" name="season" onchange="this.form.submit()">
-            <option value="0"<?= $filterSeason === 0 ? ' selected' : '' ?>>All seasons</option>
-            <?php foreach ($seasons as $s): ?>
-                <option value="<?= (int) $s ?>"<?= $filterSeason === (int) $s ? ' selected' : '' ?>><?= (int) $s ?></option>
-            <?php endforeach; ?>
-        </select>
-
-        <label class="trade-filters__label" for="filter-manager">Manager</label>
-        <select class="trade-filters__select" id="filter-manager" name="manager" onchange="this.form.submit()">
-            <option value=""<?= $filterManager === '' ? ' selected' : '' ?>>All managers</option>
-            <?php foreach ($managers as $mgr): ?>
-                <option value="<?= htmlspecialchars($mgr) ?>"<?= $filterManager === $mgr ? ' selected' : '' ?>><?= htmlspecialchars($mgr) ?></option>
-            <?php endforeach; ?>
-        </select>
-
-        <?php if ($filterSeason !== 0 || $filterManager !== ''): ?>
-            <a href="/index.php?r=trades" class="trade-filters__clear">Clear filters</a>
-        <?php endif; ?>
-    </form>
-</section>
-
 <?php
 $filtered = array_filter($trades, static function (array $trade) use ($filterSeason, $filterManager): bool {
     if ($filterSeason !== 0 && $trade['season'] !== $filterSeason) {
@@ -64,9 +38,6 @@ $filtered = array_filter($trades, static function (array $trade) use ($filterSea
 
 $filteredCount = count($filtered);
 ?>
-
-<?php if ($filterSeason !== 0 || $filterManager !== ''): ?>
-<?php endif; ?>
 
 <?php if ($filteredCount === 0): ?>
     <div class="trade-empty">
