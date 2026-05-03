@@ -68,6 +68,33 @@ class TradeHistoryService
         return $this->api->get('league/' . $league['league_key'] . '/transactions;types=trade;out=players');
     }
 
+    /**
+     * Return the raw Yahoo API response for all transactions (add/drop/trade) for debugging FAAB.
+     *
+     * @param int $season If > 0, tries to fetch that season; otherwise newest season.
+     */
+    public function getRawFaTransactions(int $season = 0): array
+    {
+        $leagues = $this->collectLeagueChain();
+        if ($leagues === []) {
+            return [];
+        }
+
+        usort($leagues, static fn(array $a, array $b): int => $b['season'] <=> $a['season']);
+
+        $league = $leagues[0];
+        if ($season > 0) {
+            foreach ($leagues as $candidate) {
+                if ((int) ($candidate['season'] ?? 0) === $season) {
+                    $league = $candidate;
+                    break;
+                }
+            }
+        }
+
+        return $this->api->get('league/' . $league['league_key'] . '/transactions;out=players');
+    }
+
     public function getAllTrades(): array
     {
         $leagues = $this->collectLeagueChain();
