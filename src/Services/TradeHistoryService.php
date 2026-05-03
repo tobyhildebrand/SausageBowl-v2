@@ -171,9 +171,11 @@ class TradeHistoryService
                 $addCounts = $this->parseFreeAgentAdds($addRaw);
                 foreach ($addCounts as $teamName => $teamData) {
                     $adds = $teamData['adds'] ?? 0;
+                    $waiverAdds = $teamData['waiver_adds'] ?? 0;
                     $faab = $teamData['faab'] ?? 0;
                     $teamNameString = $this->resolveCanonicalTeamName((string) $teamName, $season, $teamLookupBySeason, $teamDirectoryById);
-                    if ($teamNameString === null || $teamNameString === '' || $adds <= 0) {
+                    $waiverAdds = $teamData['waiver_adds'] ?? 0;
+                    if ($teamNameString === null || $teamNameString === '' || ($adds <= 0 && $waiverAdds <= 0)) {
                         continue;
                     }
 
@@ -183,10 +185,12 @@ class TradeHistoryService
                             'team_name' => $teamNameString,
                             'total_trades' => 0,
                             'free_agent_adds' => 0,
+                            'waiver_adds' => 0,
                             'faab_spent' => 0,
                         ];
                     }
                     $statsByManager[$teamNameString]['free_agent_adds'] += $adds;
+                    $statsByManager[$teamNameString]['waiver_adds'] += $waiverAdds;
                     $statsByManager[$teamNameString]['faab_spent'] += $faab;
                 }
             } catch (Throwable $e) {
@@ -211,6 +215,7 @@ class TradeHistoryService
                     'team_name' => $manager,
                     'total_trades' => 0,
                     'free_agent_adds' => 0,
+                    'waiver_adds' => 0,
                     'faab_spent' => 0,
                 ];
             }
@@ -241,8 +246,8 @@ class TradeHistoryService
     }
 
     /**
-     * @param array<string, array{team_name: string, total_trades: int, free_agent_adds: int, faab_spent: int}> $statsByManager
-     * @return array<string, array{team_name: string, total_trades: int, free_agent_adds: int, faab_spent: int}>
+     * @param array<string, array{team_name: string, total_trades: int, free_agent_adds: int, waiver_adds: int, faab_spent: int}> $statsByManager
+     * @return array<string, array{team_name: string, total_trades: int, free_agent_adds: int, waiver_adds: int, faab_spent: int}>
      */
     private function incrementTradeStat(array $statsByManager, string $teamName): array
     {
@@ -255,6 +260,7 @@ class TradeHistoryService
                 'team_name' => $teamName,
                 'total_trades' => 0,
                 'free_agent_adds' => 0,
+                'waiver_adds' => 0,
                 'faab_spent' => 0,
             ];
         }
@@ -264,7 +270,7 @@ class TradeHistoryService
     }
 
     /**
-     * @return array<string, array{adds: int, faab: int}>
+     * @return array<string, array{adds: int, waiver_adds: int, faab: int}>
      */
     private function parseFreeAgentAdds(array $raw): array
     {
@@ -298,11 +304,16 @@ class TradeHistoryService
 
             $type = strtolower((string) ($meta['type'] ?? ''));
             $status = strtolower((string) ($meta['status'] ?? 'successful'));
-            if (!in_array($type, ['add', 'add/drop'], true) || !in_array($status, ['successful', ''], true)) {
+            $isWaiver = $type === 'waiver';
+            $isFaAdd = in_array($type, ['add', 'add/drop'], true);
+            if (!$isWaiver && !$isFaAdd) {
+                continue;
+            }
+            if (!in_array($status, ['successful', ''], true)) {
                 continue;
             }
 
-            $faabBid = isset($meta['faab_bid']) ? (int) $meta['faab_bid'] : 0;
+            $faabBid = $isWaiver ? (int) ($meta['faab_bid'] ?? 0) : 0;
 
             $playersSection = $txWrapper[1]['players'] ?? ($txWrapper['players'] ?? null);
             if (!is_array($playersSection)) {
@@ -333,10 +344,14 @@ class TradeHistoryService
                 }
 
                 if (!isset($counts[$destinationTeamName])) {
-                    $counts[$destinationTeamName] = ['adds' => 0, 'faab' => 0];
+                    $counts[$destinationTeamName] = ['adds' => 0, 'waiver_adds' => 0, 'faab' => 0];
                 }
-                $counts[$destinationTeamName]['adds']++;
-                $counts[$destinationTeamName]['faab'] += $faabBid;
+                if ($isWaiver) {
+                    $counts[$destinationTeamName]['waiver_adds']++;
+                    $counts[$destinationTeamName]['faab'] += $faabBid;
+                } else {
+                    $counts[$destinationTeamName]['adds']++;
+                }
             }
         }
 
