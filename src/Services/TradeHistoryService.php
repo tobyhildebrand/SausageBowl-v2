@@ -187,6 +187,9 @@ class TradeHistoryService
             // or directly under ['players'] depending on the response shape.
             $playersSection = $txWrapper[1]['players'] ?? ($txWrapper['players'] ?? null);
 
+            // Picks are returned inside transaction meta as an array of { pick: { ... } }.
+            $picksSection = $meta['picks'] ?? [];
+
             $sideAAssets = []; // assets sent BY trader → received by tradee
             $sideBAssets = []; // assets sent BY tradee → received by trader
 
@@ -205,7 +208,14 @@ class TradeHistoryService
                     $assetName = $this->extractAssetName($playerWrapper[0] ?? $playerWrapper);
                     $txData = $playerWrapper[1]['transaction_data'] ?? ($playerWrapper['transaction_data'] ?? []);
 
-                    $sourceTeamName = (string) ($txData['source_team_name'] ?? '');
+                    // transaction_data is commonly an array with one entry.
+                    $txDataEntry = $txData;
+                    if (is_array($txData) && isset($txData[0]) && is_array($txData[0])) {
+                        $txDataEntry = $txData[0];
+                    }
+
+                    $sourceTeamName = (string) ($txDataEntry['source_team_name'] ?? '');
+                    $destinationTeamName = (string) ($txDataEntry['destination_team_name'] ?? '');
 
                     if ($assetName === '') {
                         continue;
@@ -214,11 +224,39 @@ class TradeHistoryService
                     // Group by which side sent this asset
                     if ($sourceTeamName === $traderTeamName) {
                         $sideAAssets[] = $assetName;
-                    } else {
+                    } elseif ($sourceTeamName === $tradeeTeamName) {
                         $sideBAssets[] = $assetName;
+                    } elseif ($destinationTeamName === $traderTeamName) {
+                        // If source is missing, infer by destination.
+                        $sideBAssets[] = $assetName;
+                    } else {
+                        $sideAAssets[] = $assetName;
                     }
                 }
             }
+
+            if (is_array($picksSection)) {
+                foreach ($picksSection as $pickNode) {
+                    if (!is_array($pickNode) || !isset($pickNode['pick']) || !is_array($pickNode['pick'])) {
+                        continue;
+                    }
+
+                    $pick = $pickNode['pick'];
+                    $sourceTeamName = (string) ($pick['source_team_name'] ?? '');
+                    $round = trim((string) ($pick['round'] ?? ''));
+
+                    $pickLabel = $round !== '' ? 'Pick round ' . $round : 'Draft pick';
+
+                    if ($sourceTeamName === $traderTeamName) {
+                        $sideAAssets[] = $pickLabel;
+                    } elseif ($sourceTeamName === $tradeeTeamName) {
+                        $sideBAssets[] = $pickLabel;
+                    }
+                }
+            }
+
+            $sideAAssets = array_values(array_unique($sideAAssets));
+            $sideBAssets = array_values(array_unique($sideBAssets));
 
             $trades[] = [
                 'season' => $season,
