@@ -113,7 +113,9 @@ $filteredCount = count($filtered);
                     <?php if ($assetsA !== []): ?>
                         <div class="trade-assets trade-assets--right">
                             <?php foreach ($assetsA as $asset): ?>
-                                <span class="trade-asset"><?= htmlspecialchars($asset) ?></span>
+                                <div class="trade-asset-row">
+                                    <span class="trade-asset"><?= htmlspecialchars($asset) ?></span>
+                                </div>
                             <?php endforeach; ?>
                         </div>
                     <?php else: ?>
@@ -129,7 +131,9 @@ $filteredCount = count($filtered);
                     <?php if ($assetsB !== []): ?>
                         <div class="trade-assets trade-assets--left">
                             <?php foreach ($assetsB as $asset): ?>
-                                <span class="trade-asset"><?= htmlspecialchars($asset) ?></span>
+                                <div class="trade-asset-row">
+                                    <span class="trade-asset"><?= htmlspecialchars($asset) ?></span>
+                                </div>
                             <?php endforeach; ?>
                         </div>
                     <?php else: ?>

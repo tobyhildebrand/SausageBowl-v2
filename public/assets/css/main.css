@@ -1472,17 +1472,24 @@ a:hover {
 .trade-assets {
     margin: 0;
     padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
+    display: block;
 }
 
-.trade-assets--right {
-    align-items: flex-end;
+.trade-asset-row {
+    display: block;
+    margin-top: 0.2rem;
 }
 
-.trade-assets--left {
-    align-items: flex-start;
+.trade-asset-row:first-child {
+    margin-top: 0;
+}
+
+.trade-assets--right .trade-asset-row {
+    text-align: right;
+}
+
+.trade-assets--left .trade-asset-row {
+    text-align: left;
 }
 
 .trade-asset {
