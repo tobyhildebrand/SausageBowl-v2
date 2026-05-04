@@ -1418,15 +1418,26 @@ a:hover {
 
 .h2h-table {
     min-width: 1220px;
+    width: max-content;
+    border-collapse: separate;
+    border-spacing: 0;
     table-layout: fixed;
+}
+
+.h2h-col-first {
+    width: 250px;
+}
+
+.h2h-col-data {
+    width: 145px;
 }
 
 .h2h-table .h2h-sticky-col {
     position: sticky;
     left: 0;
     z-index: 2;
-    min-width: 240px;
-    max-width: 280px;
+    min-width: 250px;
+    max-width: 250px;
     background: #161f33;
     color: #f4f8ff;
     border-right: 1px solid rgba(255, 255, 255, 0.14);
@@ -1438,10 +1449,11 @@ a:hover {
 }
 
 .h2h-col-team {
-    min-width: 150px;
-    max-width: 175px;
+    min-width: 145px;
+    max-width: 145px;
     white-space: normal;
-    word-break: break-word;
+    word-break: normal;
+    overflow-wrap: anywhere;
     line-height: 1.2;
     font-size: 0.78rem;
     text-align: center;
@@ -1455,7 +1467,8 @@ a:hover {
 
 .h2h-cell {
     text-align: center;
-    min-width: 150px;
+    min-width: 145px;
+    max-width: 145px;
 }
 
 .h2h-cell--self {
@@ -1474,18 +1487,38 @@ a:hover {
     font-weight: 600;
 }
 
+.h2h-team-cell {
+    text-align: left;
+}
+
+.h2h-team-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
 @media (max-width: 920px) {
     .h2h-table {
         min-width: 980px;
     }
 
+    .h2h-col-first {
+        width: 210px;
+    }
+
+    .h2h-col-data {
+        width: 118px;
+    }
+
     .h2h-table .h2h-sticky-col {
-        min-width: 190px;
+        min-width: 210px;
+        max-width: 210px;
     }
 
     .h2h-col-team,
     .h2h-cell {
         min-width: 118px;
+        max-width: 118px;
     }
 }
 .trade-table-wrap {

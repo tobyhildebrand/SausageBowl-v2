@@ -75,6 +75,12 @@ if ($seasons !== []) {
 <?php else: ?>
     <div class="history-table-wrap h2h-table-wrap">
         <table class="history-table h2h-table">
+            <colgroup>
+                <col class="h2h-col-first">
+                <?php foreach ($teams as $_): ?>
+                    <col class="h2h-col-data">
+                <?php endforeach; ?>
+            </colgroup>
             <thead>
                 <tr>
                     <th class="h2h-sticky-col">Team</th>
@@ -91,11 +97,13 @@ if ($seasons !== []) {
                         $teamId = (string) $team['id'];
                     ?>
                     <tr>
-                        <td class="history-team h2h-sticky-col">
-                            <?php if (!empty($team['logo_url'])): ?>
-                                <img class="history-team__logo" src="<?= htmlspecialchars((string) $team['logo_url']) ?>" alt="<?= htmlspecialchars((string) $team['team_name']) ?> logo" loading="lazy" decoding="async">
-                            <?php endif; ?>
-                            <span class="h2h-row-team-name"><?= htmlspecialchars((string) $team['team_name']) ?></span>
+                        <td class="h2h-sticky-col h2h-team-cell">
+                            <div class="h2h-team-wrap">
+                                <?php if (!empty($team['logo_url'])): ?>
+                                    <img class="history-team__logo" src="<?= htmlspecialchars((string) $team['logo_url']) ?>" alt="<?= htmlspecialchars((string) $team['team_name']) ?> logo" loading="lazy" decoding="async">
+                                <?php endif; ?>
+                                <span class="h2h-row-team-name"><?= htmlspecialchars((string) $team['team_name']) ?></span>
+                            </div>
                         </td>
 
                         <?php foreach ($teams as $opponent): ?>
