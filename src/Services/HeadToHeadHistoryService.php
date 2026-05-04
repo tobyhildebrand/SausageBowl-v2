@@ -60,6 +60,7 @@ class HeadToHeadHistoryService
                 'winner_team_key' => 0,
                 'score_fallback' => 0,
                 'skipped_no_outcome' => 0,
+                'skipped_unplayed_0_0' => 0,
             ],
             'draw_samples' => [],
         ];
@@ -218,6 +219,13 @@ class HeadToHeadHistoryService
                             $debug['outcome_sources']['score_fallback']++;
                             $aScore = (float) $teamAScore;
                             $bScore = (float) $teamBScore;
+
+                            // Yahoo returns many future scheduled matchups as 0-0 with no winner/tie marker.
+                            // Those are unplayed placeholders and must not count as draws.
+                            if ($winnerTeamKey === '' && !$isTied && $aScore == 0.0 && $bScore == 0.0) {
+                                $debug['outcome_sources']['skipped_unplayed_0_0']++;
+                                continue;
+                            }
 
                             $storedAScore = $storedAId === $teamA['id'] ? $aScore : $bScore;
                             $storedBScore = $storedAId === $teamA['id'] ? $bScore : $aScore;
