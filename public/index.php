@@ -304,12 +304,12 @@ try {
 
             $render('trades', [
                 'title'    => 'Trade History',
-                'seasons'  => $tradeData['seasons'],
-                'managers' => $tradeData['managers'],
-                'trades'   => $tradeData['trades'],
-                'statsRows' => $tradeData['stats_rows'],
-                'errors'   => $tradeData['errors'],
-                'statsErrors' => $tradeData['stats_errors'],
+                'seasons'  => is_array($tradeData['seasons'] ?? null) ? $tradeData['seasons'] : [],
+                'managers' => is_array($tradeData['managers'] ?? null) ? $tradeData['managers'] : [],
+                'trades'   => is_array($tradeData['trades'] ?? null) ? $tradeData['trades'] : [],
+                'statsRows' => is_array($tradeData['stats_rows'] ?? null) ? $tradeData['stats_rows'] : [],
+                'errors'   => is_array($tradeData['errors'] ?? null) ? $tradeData['errors'] : [],
+                'statsErrors' => is_array($tradeData['stats_errors'] ?? null) ? $tradeData['stats_errors'] : [],
             ]);
             break;
 

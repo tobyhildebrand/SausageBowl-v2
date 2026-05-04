@@ -60,7 +60,8 @@ class RosterService
      */
     public function getAllRosters(): array
     {
-        $raw = $this->fetchRosterPayload($this->leagueKey);
+        $resolvedKey = $this->resolveLatestLeagueKey($this->leagueKey);
+        $raw = $this->fetchRosterPayload($resolvedKey);
 
         return $this->parseRosters($raw);
     }
@@ -72,7 +73,12 @@ class RosterService
      */
     public function getRosterOverview(): array
     {
-        $raw = $this->fetchRosterPayload($this->leagueKey);
+        // Walk the renew chain forward so we start from the most recent league.
+        // This avoids crashes when the configured key belongs to an old season
+        // whose roster endpoint Yahoo no longer serves.
+        $resolvedKey = $this->resolveLatestLeagueKey($this->leagueKey);
+
+        $raw = $this->fetchRosterPayload($resolvedKey);
         $leagueMeta = $this->parseLeagueMeta($raw);
         $sourceLeagueMeta = $leagueMeta;
         $teams = $this->parseRosters($raw);
@@ -236,6 +242,36 @@ class RosterService
         }
 
         return $gameId . '.l.' . $leagueId;
+    }
+
+    /**
+     * Walk the Yahoo league renew chain forward from $leagueKey, returning the
+     * most recent league key found. Falls back to the original key on any error.
+     * Follows up to 5 hops to guard against infinite loops.
+     */
+    private function resolveLatestLeagueKey(string $leagueKey): string
+    {
+        $key = $leagueKey;
+        $maxHops = 5;
+
+        for ($i = 0; $i < $maxHops; $i++) {
+            try {
+                $meta = $this->api->get("league/{$key}");
+                $renewValue = (string) ($meta['fantasy_content']['league'][0]['renew'] ?? '');
+                if ($renewValue === '') {
+                    break;
+                }
+                $renewed = $this->buildRenewedLeagueKey($renewValue);
+                if ($renewed === null) {
+                    break;
+                }
+                $key = $renewed;
+            } catch (Throwable $e) {
+                break;
+            }
+        }
+
+        return $key;
     }
 
     private function fetchRosterPayload(string $leagueKey): array

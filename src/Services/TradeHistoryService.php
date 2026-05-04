@@ -100,7 +100,14 @@ class TradeHistoryService
         $leagues = $this->collectLeagueChain();
 
         if ($leagues === []) {
-            return ['seasons' => [], 'managers' => [], 'trades' => [], 'errors' => []];
+            return [
+                'seasons' => [],
+                'managers' => [],
+                'trades' => [],
+                'stats_rows' => [],
+                'errors' => [],
+                'stats_errors' => [],
+            ];
         }
 
         usort($leagues, static fn(array $a, array $b): int => $b['season'] <=> $a['season']);
