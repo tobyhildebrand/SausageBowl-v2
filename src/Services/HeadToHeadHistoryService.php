@@ -93,13 +93,14 @@ class HeadToHeadHistoryService
                 $bounds = $this->determineSeasonWeekBounds($leagueKey);
                 $endWeek = (int) ($bounds['end_week'] ?? 0);
                 $playoffStartWeek = (int) ($bounds['playoff_start_week'] ?? 0);
+                $seenSeasonMatchups = [];
 
                 if ($endWeek <= 0) {
                     continue;
                 }
 
                 for ($week = 1; $week <= $endWeek; $week++) {
-                    $scoreboardRaw = $this->api->get('league/' . $leagueKey . '/scoreboard', ['week' => $week]);
+                    $scoreboardRaw = $this->getScoreboardForWeek($leagueKey, $week);
                     $weekMatchups = $this->dedupeMatchups($this->parseScoreboardWeek($scoreboardRaw, $week));
 
                     foreach ($weekMatchups as $matchup) {
@@ -115,6 +116,7 @@ class HeadToHeadHistoryService
                         $teamBNameRaw = (string) ($matchup['team_2'] ?? '');
                         $teamAScore = $matchup['team_1_score'] ?? null;
                         $teamBScore = $matchup['team_2_score'] ?? null;
+                        $matchupId = trim((string) ($matchup['matchup_id'] ?? ''));
 
                         if ($teamANameRaw === '' || $teamBNameRaw === '') {
                             continue;
@@ -126,6 +128,15 @@ class HeadToHeadHistoryService
                         if (!is_float($teamBScore) && !is_int($teamBScore)) {
                             continue;
                         }
+
+                        $dedupeKey = $matchupId !== ''
+                            ? 'id:' . $matchupId
+                            : 'wk:' . $week . '|pair:' . strtolower($teamANameRaw) . '|' . strtolower($teamBNameRaw);
+
+                        if (isset($seenSeasonMatchups[$dedupeKey])) {
+                            continue;
+                        }
+                        $seenSeasonMatchups[$dedupeKey] = true;
 
                         $teamA = $this->resolveCanonicalTeam($teamANameRaw, $season, $teamLookupBySeason, $teamDirectoryById);
                         $teamB = $this->resolveCanonicalTeam($teamBNameRaw, $season, $teamLookupBySeason, $teamDirectoryById);
@@ -562,12 +573,7 @@ class HeadToHeadHistoryService
             return (float) $teamData[1]['team_points']['total'];
         }
 
-        $candidate = $this->findFirstNumericByKey($teamData, 'total');
-        if ($candidate !== null) {
-            return (float) $candidate;
-        }
-
-        return null;
+        return $this->findTeamPointsRecursively($teamData);
     }
 
     /** @param array<string, mixed> $node @param array<int, mixed> $collector */
@@ -629,20 +635,16 @@ class HeadToHeadHistoryService
         return (int) $normalized;
     }
 
-    /** @param mixed $node */
-    private function findFirstNumericByKey($node, string $targetKey): ?float
+    /** @param array<string, mixed>|array<int, mixed> $node */
+    private function findTeamPointsRecursively(array $node): ?float
     {
-        if (!is_array($node)) {
-            return null;
-        }
-
         foreach ($node as $k => $v) {
-            if ($k === $targetKey && is_scalar($v) && is_numeric((string) $v)) {
-                return (float) $v;
+            if ($k === 'team_points' && is_array($v) && isset($v['total']) && is_scalar($v['total'])) {
+                return (float) $v['total'];
             }
 
             if (is_array($v)) {
-                $found = $this->findFirstNumericByKey($v, $targetKey);
+                $found = $this->findTeamPointsRecursively($v);
                 if ($found !== null) {
                     return $found;
                 }
@@ -650,6 +652,21 @@ class HeadToHeadHistoryService
         }
 
         return null;
+    }
+
+    private function getScoreboardForWeek(string $leagueKey, int $week): array
+    {
+        try {
+            return $this->api->get('league/' . $leagueKey . '/scoreboard', ['week' => $week]);
+        } catch (Throwable $e) {
+            $message = strtolower($e->getMessage());
+            if (strpos($message, 'non-json') === false && strpos($message, 'http 404') === false) {
+                throw $e;
+            }
+        }
+
+        // Older game IDs sometimes fail with query params but work with Yahoo matrix params.
+        return $this->api->get('league/' . $leagueKey . '/scoreboard;week=' . $week);
     }
 
     /**
