@@ -215,13 +215,19 @@ try {
         case '/head-to-head':
             $cache = new CacheService();
             $ttl = 3600; // 1 hour
+            $bypassHeadToHeadCache = ($config['app']['debug'] ?? false)
+                || ((string) ($_GET['nocache'] ?? '') === '1');
 
-            $h2h = $cache->remember('history.head_to_head', $ttl, static function () use ($config): array {
+            $loadHeadToHead = static function () use ($config): array {
                 $oauth = new YahooOAuthClient($config['yahoo']);
                 $apiClient = new YahooApiClient($oauth);
                 $service = new HeadToHeadHistoryService($apiClient, $config['yahoo']['league_key'], 2018);
                 return $service->getHeadToHeadMatrix();
-            });
+            };
+
+            $h2h = $bypassHeadToHeadCache
+                ? $loadHeadToHead()
+                : $cache->remember('history.head_to_head', $ttl, $loadHeadToHead);
 
             $render('head_to_head', [
                 'title' => 'Historic Head-to-Head',
@@ -232,6 +238,30 @@ try {
                 'errors' => $h2h['errors'] ?? [],
             ]);
             break;
+
+        case '/head-to-head/debug':
+            if (!$config['app']['debug']) {
+                http_response_code(403);
+                echo 'Debug mode is disabled.';
+                exit;
+            }
+
+            $season = (int) ($_GET['season'] ?? 0);
+            $week = (int) ($_GET['week'] ?? 0);
+
+            $oauth = new YahooOAuthClient($config['yahoo']);
+            $apiClient = new YahooApiClient($oauth);
+            $service = new HeadToHeadHistoryService($apiClient, $config['yahoo']['league_key'], 2018);
+
+            header('Content-Type: application/json; charset=utf-8');
+
+            if ($season > 0 && $week > 0) {
+                echo json_encode($service->getWeekDebug($season, $week), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+            } else {
+                echo json_encode($service->getHeadToHeadMatrix(true), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+            }
+
+            exit;
 
         case '/playoff-history':
             http_response_code(404);

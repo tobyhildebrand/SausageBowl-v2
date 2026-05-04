@@ -32,7 +32,7 @@ class HeadToHeadHistoryService
      *   errors: array<int, string>
      * }
      */
-    public function getHeadToHeadMatrix(): array
+    public function getHeadToHeadMatrix(bool $includeDebug = false): array
     {
         $leagues = $this->collectLeagueChain();
 
@@ -54,6 +54,15 @@ class HeadToHeadHistoryService
         $pairRecords = [];
         $errors = [];
         $totalGames = 0;
+        $debug = [
+            'outcome_sources' => [
+                'is_tied' => 0,
+                'winner_team_key' => 0,
+                'score_fallback' => 0,
+                'skipped_no_outcome' => 0,
+            ],
+            'draw_samples' => [],
+        ];
 
         foreach ($leagues as $league) {
             $season = (int) ($league['season'] ?? 0);
@@ -182,8 +191,22 @@ class HeadToHeadHistoryService
                         }
 
                         if ($isTied) {
+                            $debug['outcome_sources']['is_tied']++;
                             $pairRecords[$pairKey]['a_d']++;
+                            if (count($debug['draw_samples']) < 30) {
+                                $debug['draw_samples'][] = [
+                                    'season' => $season,
+                                    'week' => $week,
+                                    'team_1' => $teamANameRaw,
+                                    'team_2' => $teamBNameRaw,
+                                    'team_1_score' => $teamAScore,
+                                    'team_2_score' => $teamBScore,
+                                    'winner_team_key' => $winnerTeamKey,
+                                    'source' => 'is_tied',
+                                ];
+                            }
                         } elseif ($winnerId !== null) {
+                            $debug['outcome_sources']['winner_team_key']++;
                             if ($winnerId === $storedAId) {
                                 $pairRecords[$pairKey]['a_w']++;
                             } elseif ($winnerId === $storedBId) {
@@ -192,6 +215,7 @@ class HeadToHeadHistoryService
                                 continue;
                             }
                         } elseif ((is_float($teamAScore) || is_int($teamAScore)) && (is_float($teamBScore) || is_int($teamBScore))) {
+                            $debug['outcome_sources']['score_fallback']++;
                             $aScore = (float) $teamAScore;
                             $bScore = (float) $teamBScore;
 
@@ -204,8 +228,21 @@ class HeadToHeadHistoryService
                                 $pairRecords[$pairKey]['a_l']++;
                             } else {
                                 $pairRecords[$pairKey]['a_d']++;
+                                if (count($debug['draw_samples']) < 30) {
+                                    $debug['draw_samples'][] = [
+                                        'season' => $season,
+                                        'week' => $week,
+                                        'team_1' => $teamANameRaw,
+                                        'team_2' => $teamBNameRaw,
+                                        'team_1_score' => $teamAScore,
+                                        'team_2_score' => $teamBScore,
+                                        'winner_team_key' => $winnerTeamKey,
+                                        'source' => 'score_fallback_equal',
+                                    ];
+                                }
                             }
                         } else {
+                            $debug['outcome_sources']['skipped_no_outcome']++;
                             continue;
                         }
 
@@ -297,12 +334,59 @@ class HeadToHeadHistoryService
         $seasons = array_values(array_map(static fn(array $l): int => (int) $l['season'], $leagues));
         rsort($seasons);
 
-        return [
+        $result = [
             'seasons' => array_values(array_unique($seasons)),
             'teams' => $teamRows,
             'matrix' => $matrix,
             'total_games' => $totalGames,
             'errors' => $errors,
+        ];
+
+        if ($includeDebug) {
+            $result['debug'] = $debug;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Return parsed matchup diagnostics for a single season/week.
+     *
+     * @return array<string, mixed>
+     */
+    public function getWeekDebug(int $season, int $week): array
+    {
+        $leagues = $this->collectLeagueChain();
+        if ($leagues === []) {
+            return ['error' => 'No leagues found in renewal chain.'];
+        }
+
+        $leagueForSeason = null;
+        foreach ($leagues as $league) {
+            if ((int) ($league['season'] ?? 0) === $season) {
+                $leagueForSeason = $league;
+                break;
+            }
+        }
+
+        if (!is_array($leagueForSeason)) {
+            return ['error' => 'Season not found in league chain.', 'requested_season' => $season];
+        }
+
+        $leagueKey = (string) ($leagueForSeason['league_key'] ?? '');
+        if ($leagueKey === '') {
+            return ['error' => 'Resolved season has empty league key.', 'requested_season' => $season];
+        }
+
+        $raw = $this->getScoreboardForWeek($leagueKey, $week);
+        $parsed = $this->parseScoreboardWeek($raw, $week);
+
+        return [
+            'season' => $season,
+            'week' => $week,
+            'league_key' => $leagueKey,
+            'matchup_count' => count($parsed),
+            'parsed_matchups' => $parsed,
         ];
     }
 
