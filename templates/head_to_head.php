@@ -33,6 +33,22 @@ $shortName = static function (string $name): string {
     return $candidate;
 };
 
+// Initials: first letter of each word, uppercase, max 4 chars
+$initials = static function (string $name): string {
+    $name = trim($name);
+    if ($name === '') {
+        return '';
+    }
+    $parts = preg_split('/\s+/', $name) ?: [];
+    $abbr = '';
+    foreach ($parts as $word) {
+        if ($word !== '') {
+            $abbr .= mb_strtoupper(mb_substr($word, 0, 1));
+        }
+    }
+    return mb_substr($abbr, 0, 4);
+};
+
 $formatRecord = static function (int $w, int $l, int $d): string {
     return $d > 0 ? ($w . '-' . $l . '-' . $d) : ($w . '-' . $l);
 };
@@ -144,7 +160,10 @@ if ($seasons !== []) {
                     <th class="h2h-sticky-col">Team</th>
                     <?php foreach ($teams as $opponent): ?>
                         <th class="h2h-col-team" title="<?= htmlspecialchars((string) $opponent['team_name']) ?>">
-                            <span class="h2h-col-label"><?= htmlspecialchars($shortName((string) $opponent['team_name'])) ?></span>
+                            <?php if (!empty($opponent['logo_url'])): ?>
+                                <img class="h2h-hdr-logo" src="<?= htmlspecialchars((string) $opponent['logo_url']) ?>" alt="" aria-hidden="true">
+                            <?php endif; ?>
+                            <span class="h2h-col-label"><?= htmlspecialchars($initials((string) $opponent['team_name'])) ?></span>
                         </th>
                     <?php endforeach; ?>
                 </tr>
