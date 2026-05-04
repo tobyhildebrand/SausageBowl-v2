@@ -189,10 +189,9 @@ if ($seasons !== []) {
                                 <?php if ($teamId === $oppId): ?>
                                     <span class="history-place__empty">—</span>
                                 <?php elseif ($games === 0): ?>
-                                    <span class="history-place__empty">0-0-0</span>
+                                    <span class="history-place__empty" title="No completed matchups yet">0-0</span>
                                 <?php else: ?>
-                                    <span class="h2h-record"><?= htmlspecialchars($formatRecord((int) $cell['w'], (int) $cell['l'], (int) $cell['d'])) ?></span>
-                                    <span class="insight-sub"><?= $games ?> game<?= $games !== 1 ? 's' : '' ?></span>
+                                    <span class="h2h-record" title="<?= $games ?> completed game<?= $games !== 1 ? 's' : '' ?>"><?= htmlspecialchars($formatRecord((int) $cell['w'], (int) $cell['l'], (int) $cell['d'])) ?></span>
                                 <?php endif; ?>
                             </td>
                         <?php endforeach; ?>

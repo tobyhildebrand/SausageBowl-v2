@@ -1414,30 +1414,31 @@ a:hover {
 /* Head-to-head matrix */
 .h2h-table-wrap {
     max-width: 100%;
+    overflow-x: hidden;
 }
 
 .h2h-table {
-    min-width: 1220px;
-    width: max-content;
+    width: 100%;
+    min-width: 0;
     border-collapse: separate;
     border-spacing: 0;
     table-layout: fixed;
 }
 
 .h2h-col-first {
-    width: 250px;
+    width: 22%;
 }
 
 .h2h-col-data {
-    width: 145px;
+    width: 7.09%;
 }
 
 .h2h-table .h2h-sticky-col {
     position: sticky;
     left: 0;
     z-index: 2;
-    min-width: 250px;
-    max-width: 250px;
+    min-width: 0;
+    max-width: none;
     background: #161f33;
     color: #f4f8ff;
     border-right: 1px solid rgba(255, 255, 255, 0.14);
@@ -1449,15 +1450,16 @@ a:hover {
 }
 
 .h2h-col-team {
-    min-width: 145px;
-    max-width: 145px;
+    min-width: 0;
+    max-width: none;
     white-space: normal;
-    word-break: normal;
+    word-break: break-word;
     overflow-wrap: anywhere;
-    line-height: 1.2;
-    font-size: 0.78rem;
+    line-height: 1.15;
+    font-size: 0.74rem;
     text-align: center;
     vertical-align: bottom;
+    padding: 0.45rem 0.35rem;
 }
 
 .h2h-col-label {
@@ -1467,8 +1469,9 @@ a:hover {
 
 .h2h-cell {
     text-align: center;
-    min-width: 145px;
-    max-width: 145px;
+    min-width: 0;
+    max-width: none;
+    padding: 0.34rem 0.28rem;
 }
 
 .h2h-cell--self {
@@ -1478,13 +1481,15 @@ a:hover {
 .h2h-record {
     display: inline-block;
     font-weight: 700;
-    letter-spacing: 0.01em;
+    letter-spacing: 0.005em;
+    font-size: 0.84rem;
 }
 
 .h2h-row-team-name {
     display: inline-block;
     color: #f4f8ff;
     font-weight: 600;
+    line-height: 1.1;
 }
 
 .h2h-team-cell {
@@ -1527,8 +1532,13 @@ a:hover {
 }
 
 @media (max-width: 920px) {
+    .h2h-table-wrap {
+        overflow-x: auto;
+    }
+
     .h2h-table {
         min-width: 980px;
+        width: max-content;
     }
 
     .h2h-col-first {
