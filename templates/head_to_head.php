@@ -11,6 +11,28 @@ $matrix = is_array($matrix ?? null) ? $matrix : [];
 $errors = is_array($errors ?? null) ? $errors : [];
 $totalGames = (int) ($totalGames ?? 0);
 
+$shortName = static function (string $name): string {
+    $name = trim($name);
+    if ($name === '') {
+        return '';
+    }
+
+    $parts = preg_split('/\s+/', $name) ?: [];
+    if (count($parts) >= 2) {
+        $first = (string) ($parts[0] ?? '');
+        $second = (string) ($parts[1] ?? '');
+        $candidate = trim($first . ' ' . $second);
+    } else {
+        $candidate = $name;
+    }
+
+    if (strlen($candidate) > 14) {
+        return substr($candidate, 0, 13) . '...';
+    }
+
+    return $candidate;
+};
+
 $seasonLabel = 'No seasons loaded';
 if ($seasons !== []) {
     $minSeason = (int) min($seasons);
@@ -58,7 +80,7 @@ if ($seasons !== []) {
                     <th class="h2h-sticky-col">Team</th>
                     <?php foreach ($teams as $opponent): ?>
                         <th class="h2h-col-team" title="<?= htmlspecialchars((string) $opponent['team_name']) ?>">
-                            <?= htmlspecialchars((string) $opponent['team_name']) ?>
+                            <span class="h2h-col-label"><?= htmlspecialchars($shortName((string) $opponent['team_name'])) ?></span>
                         </th>
                     <?php endforeach; ?>
                 </tr>
@@ -73,7 +95,7 @@ if ($seasons !== []) {
                             <?php if (!empty($team['logo_url'])): ?>
                                 <img class="history-team__logo" src="<?= htmlspecialchars((string) $team['logo_url']) ?>" alt="<?= htmlspecialchars((string) $team['team_name']) ?> logo" loading="lazy" decoding="async">
                             <?php endif; ?>
-                            <span><?= htmlspecialchars((string) $team['team_name']) ?></span>
+                            <span class="h2h-row-team-name"><?= htmlspecialchars((string) $team['team_name']) ?></span>
                         </td>
 
                         <?php foreach ($teams as $opponent): ?>

@@ -116,16 +116,13 @@ class HeadToHeadHistoryService
                         $teamBNameRaw = (string) ($matchup['team_2'] ?? '');
                         $teamAScore = $matchup['team_1_score'] ?? null;
                         $teamBScore = $matchup['team_2_score'] ?? null;
+                        $teamAKey = (string) ($matchup['team_1_key'] ?? '');
+                        $teamBKey = (string) ($matchup['team_2_key'] ?? '');
+                        $winnerTeamKey = (string) ($matchup['winner_team_key'] ?? '');
+                        $isTied = (bool) ($matchup['is_tied'] ?? false);
                         $matchupId = trim((string) ($matchup['matchup_id'] ?? ''));
 
                         if ($teamANameRaw === '' || $teamBNameRaw === '') {
-                            continue;
-                        }
-
-                        if (!is_float($teamAScore) && !is_int($teamAScore)) {
-                            continue;
-                        }
-                        if (!is_float($teamBScore) && !is_int($teamBScore)) {
                             continue;
                         }
 
@@ -174,19 +171,42 @@ class HeadToHeadHistoryService
                             ];
                         }
 
-                        $aScore = (float) $teamAScore;
-                        $bScore = (float) $teamBScore;
-
                         $storedAId = (string) $pairRecords[$pairKey]['a_id'];
-                        $storedAScore = $storedAId === $teamA['id'] ? $aScore : $bScore;
-                        $storedBScore = $storedAId === $teamA['id'] ? $bScore : $aScore;
+                        $storedBId = (string) $pairRecords[$pairKey]['b_id'];
 
-                        if ($storedAScore > $storedBScore) {
-                            $pairRecords[$pairKey]['a_w']++;
-                        } elseif ($storedAScore < $storedBScore) {
-                            $pairRecords[$pairKey]['a_l']++;
-                        } else {
+                        $winnerId = null;
+                        if ($winnerTeamKey !== '' && $teamAKey !== '' && $winnerTeamKey === $teamAKey) {
+                            $winnerId = (string) $teamA['id'];
+                        } elseif ($winnerTeamKey !== '' && $teamBKey !== '' && $winnerTeamKey === $teamBKey) {
+                            $winnerId = (string) $teamB['id'];
+                        }
+
+                        if ($isTied) {
                             $pairRecords[$pairKey]['a_d']++;
+                        } elseif ($winnerId !== null) {
+                            if ($winnerId === $storedAId) {
+                                $pairRecords[$pairKey]['a_w']++;
+                            } elseif ($winnerId === $storedBId) {
+                                $pairRecords[$pairKey]['a_l']++;
+                            } else {
+                                continue;
+                            }
+                        } elseif ((is_float($teamAScore) || is_int($teamAScore)) && (is_float($teamBScore) || is_int($teamBScore))) {
+                            $aScore = (float) $teamAScore;
+                            $bScore = (float) $teamBScore;
+
+                            $storedAScore = $storedAId === $teamA['id'] ? $aScore : $bScore;
+                            $storedBScore = $storedAId === $teamA['id'] ? $bScore : $aScore;
+
+                            if ($storedAScore > $storedBScore) {
+                                $pairRecords[$pairKey]['a_w']++;
+                            } elseif ($storedAScore < $storedBScore) {
+                                $pairRecords[$pairKey]['a_l']++;
+                            } else {
+                                $pairRecords[$pairKey]['a_d']++;
+                            }
+                        } else {
+                            continue;
                         }
 
                         $totalGames++;
@@ -428,8 +448,12 @@ class HeadToHeadHistoryService
      *   matchup_id: string,
      *   team_1: string,
      *   team_2: string,
+    *   team_1_key: string,
+    *   team_2_key: string,
      *   team_1_score: ?float,
      *   team_2_score: ?float,
+    *   winner_team_key: string,
+    *   is_tied: bool,
      *   is_playoffs: bool,
      *   is_consolation: bool
      * }>
@@ -473,16 +497,25 @@ class HeadToHeadHistoryService
 
             $team1Name = (string) ($teams[0]['name'] ?? '');
             $team2Name = (string) ($teams[1]['name'] ?? '');
+            $team1Key = (string) ($teams[0]['team_key'] ?? '');
+            $team2Key = (string) ($teams[1]['team_key'] ?? '');
             if ($team1Name === '' || $team2Name === '') {
                 continue;
             }
+
+            $winnerTeamKey = trim((string) ($matchupData['winner_team_key'] ?? ''));
+            $isTied = $this->toBool($matchupData['is_tied'] ?? false);
 
             $matchups[] = [
                 'matchup_id' => (string) ($matchupData['matchup_id'] ?? ''),
                 'team_1' => $team1Name,
                 'team_2' => $team2Name,
+                'team_1_key' => $team1Key,
+                'team_2_key' => $team2Key,
                 'team_1_score' => $teams[0]['points'] ?? null,
                 'team_2_score' => $teams[1]['points'] ?? null,
+                'winner_team_key' => $winnerTeamKey,
+                'is_tied' => $isTied,
                 'is_playoffs' => (string) ($matchupData['is_playoffs'] ?? '0') === '1',
                 'is_consolation' => (string) ($matchupData['is_consolation'] ?? '0') === '1',
             ];
@@ -521,7 +554,7 @@ class HeadToHeadHistoryService
         return $out;
     }
 
-    /** @return array<int, array{name: string, points: ?float}> */
+    /** @return array<int, array{name: string, team_key: string, points: ?float}> */
     private function parseMatchupTeams(array $matchupData): array
     {
         $teamNodes = [];
@@ -540,10 +573,14 @@ class HeadToHeadHistoryService
             }
 
             $name = '';
+            $teamKey = '';
             foreach ($meta as $item) {
                 if (is_array($item) && isset($item['name']) && is_string($item['name'])) {
                     $name = $item['name'];
-                    break;
+                }
+
+                if (is_array($item) && isset($item['team_key']) && is_string($item['team_key'])) {
+                    $teamKey = $item['team_key'];
                 }
             }
 
@@ -553,6 +590,7 @@ class HeadToHeadHistoryService
 
             $teams[] = [
                 'name' => $name,
+                'team_key' => $teamKey,
                 'points' => $this->extractTeamScore($teamData),
             ];
         }
@@ -635,6 +673,25 @@ class HeadToHeadHistoryService
         return (int) $normalized;
     }
 
+    /** @param mixed $value */
+    private function toBool($value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_int($value)) {
+            return $value !== 0;
+        }
+
+        if (!is_string($value)) {
+            return false;
+        }
+
+        $normalized = strtolower(trim($value));
+        return in_array($normalized, ['1', 'true', 'yes', 'y'], true);
+    }
+
     /** @param array<string, mixed>|array<int, mixed> $node */
     private function findTeamPointsRecursively(array $node): ?float
     {
@@ -659,13 +716,9 @@ class HeadToHeadHistoryService
         try {
             return $this->api->get('league/' . $leagueKey . '/scoreboard', ['week' => $week]);
         } catch (Throwable $e) {
-            $message = strtolower($e->getMessage());
-            if (strpos($message, 'non-json') === false && strpos($message, 'http 404') === false) {
-                throw $e;
-            }
+            // Fall back to Yahoo matrix-param endpoint for older game IDs.
         }
 
-        // Older game IDs sometimes fail with query params but work with Yahoo matrix params.
         return $this->api->get('league/' . $leagueKey . '/scoreboard;week=' . $week);
     }
 
