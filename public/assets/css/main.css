@@ -1497,6 +1497,35 @@ a:hover {
     gap: 0.45rem;
 }
 
+.h2h-team-indicators {
+    margin-top: 0.22rem;
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+}
+
+.h2h-indicator {
+    display: inline-block;
+    font-size: 0.68rem;
+    line-height: 1.25;
+    padding: 0.08rem 0.3rem;
+    border-radius: 999px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.h2h-indicator--worst {
+    background: rgba(239, 68, 68, 0.18);
+    color: #fecaca;
+    border: 1px solid rgba(248, 113, 113, 0.35);
+}
+
+.h2h-indicator--best {
+    background: rgba(16, 185, 129, 0.2);
+    color: #bbf7d0;
+    border: 1px solid rgba(52, 211, 153, 0.35);
+}
+
 @media (max-width: 920px) {
     .h2h-table {
         min-width: 980px;
