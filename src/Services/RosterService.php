@@ -246,21 +246,43 @@ class RosterService
 
     /**
      * Walk the Yahoo league renew chain forward from $leagueKey, returning the
-     * most recent league key found. Falls back to the original key on any error.
-     * Follows up to 5 hops to guard against infinite loops.
+     * best available league key for rosters.
+     *
+     * Strategy:
+     * 1) Follow renew chain from configured key.
+     * 2) If that looks stale, augment with user's NFL league list.
+     * 3) Prefer newest season that returns non-empty rosters.
+     *
+     * Falls back to the configured key if no candidate succeeds.
      */
     private function resolveLatestLeagueKey(string $leagueKey): string
     {
+        $candidates = [];
+        $seen = [];
         $key = $leagueKey;
-        $maxHops = 5;
+        $maxHops = 8;
+        $configuredName = '';
 
+        // 1) Follow renew chain from configured key.
         for ($i = 0; $i < $maxHops; $i++) {
+            if ($key === '' || isset($seen[$key])) {
+                break;
+            }
+            $seen[$key] = true;
+
             try {
                 $meta = $this->api->get("league/{$key}");
-                $renewValue = (string) ($meta['fantasy_content']['league'][0]['renew'] ?? '');
-                if ($renewValue === '') {
-                    break;
+                $leagueMeta = $this->parseLeagueMeta($meta);
+                $season = (int) ($leagueMeta['season'] ?? 0);
+                $name = (string) ($leagueMeta['name'] ?? '');
+
+                if ($i === 0) {
+                    $configuredName = $name;
                 }
+
+                $candidates[$key] = max((int) ($candidates[$key] ?? 0), $season);
+
+                $renewValue = (string) ($leagueMeta['renew'] ?? '');
                 $renewed = $this->buildRenewedLeagueKey($renewValue);
                 if ($renewed === null) {
                     break;
@@ -271,7 +293,148 @@ class RosterService
             }
         }
 
-        return $key;
+        // 2) If renew chain appears stale, augment with the user's NFL league list.
+        $newestKnownSeason = 0;
+        foreach ($candidates as $candidateSeason) {
+            $newestKnownSeason = max($newestKnownSeason, (int) $candidateSeason);
+        }
+
+        if ($newestKnownSeason <= ((int) date('Y') - 1)) {
+            $nameNeedle = $this->normalizeName($configuredName);
+            $userLeagues = $this->collectUserNflLeagues();
+
+            foreach ($userLeagues as $league) {
+                $candidateKey = (string) ($league['league_key'] ?? '');
+                $candidateSeason = (int) ($league['season'] ?? 0);
+                $candidateName = $this->normalizeName((string) ($league['name'] ?? ''));
+
+                if ($candidateKey === '' || $candidateSeason <= 0) {
+                    continue;
+                }
+
+                if ($nameNeedle !== '') {
+                    $matchesName = $candidateName !== ''
+                        && (
+                            strpos($candidateName, $nameNeedle) !== false
+                            || strpos($nameNeedle, $candidateName) !== false
+                        );
+
+                    if (!$matchesName) {
+                        continue;
+                    }
+                }
+
+                $candidates[$candidateKey] = max((int) ($candidates[$candidateKey] ?? 0), $candidateSeason);
+            }
+        }
+
+        if ($candidates === []) {
+            return $leagueKey;
+        }
+
+        // 3) Prefer newest season that actually returns non-empty rosters.
+        arsort($candidates, SORT_NUMERIC);
+        $fallbackSuccessful = null;
+
+        foreach (array_keys($candidates) as $candidateKey) {
+            try {
+                $raw = $this->fetchRosterPayload($candidateKey);
+                $teams = $this->parseRosters($raw);
+
+                if (!$this->areAllTeamsEmpty($teams)) {
+                    return $candidateKey;
+                }
+
+                if ($fallbackSuccessful === null) {
+                    $fallbackSuccessful = $candidateKey;
+                }
+            } catch (Throwable $e) {
+                continue;
+            }
+        }
+
+        return $fallbackSuccessful ?? $leagueKey;
+    }
+
+    /**
+     * @return array<int, array{league_key: string, season: int, name: string}>
+     */
+    private function collectUserNflLeagues(): array
+    {
+        try {
+            $raw = $this->api->get('users;use_login/games;game_keys=nfl/leagues');
+        } catch (Throwable $e) {
+            return [];
+        }
+
+        $results = [];
+        $this->collectUserNflLeaguesRecursive($raw, $results);
+
+        if ($results === []) {
+            return [];
+        }
+
+        $deduped = [];
+        foreach ($results as $row) {
+            $key = (string) ($row['league_key'] ?? '');
+            if ($key === '') {
+                continue;
+            }
+
+            if (!isset($deduped[$key]) || ((int) $row['season'] > (int) $deduped[$key]['season'])) {
+                $deduped[$key] = $row;
+            }
+        }
+
+        return array_values($deduped);
+    }
+
+    /**
+     * @param mixed $node
+     * @param array<int, array{league_key: string, season: int, name: string}> $results
+     */
+    private function collectUserNflLeaguesRecursive($node, array &$results): void
+    {
+        if (!is_array($node)) {
+            return;
+        }
+
+        if (isset($node[0]) && is_array($node[0])) {
+            $flat = [];
+            foreach ($node[0] as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                foreach ($item as $k => $v) {
+                    $flat[$k] = $v;
+                }
+            }
+
+            $leagueKey = (string) ($flat['league_key'] ?? '');
+            $season = (int) ($flat['season'] ?? 0);
+            if ($leagueKey !== '' && $season > 0) {
+                $results[] = [
+                    'league_key' => $leagueKey,
+                    'season' => $season,
+                    'name' => (string) ($flat['name'] ?? ''),
+                ];
+            }
+        }
+
+        foreach ($node as $child) {
+            $this->collectUserNflLeaguesRecursive($child, $results);
+        }
+    }
+
+    private function normalizeName(string $value): string
+    {
+        $value = strtolower(trim($value));
+        if ($value === '') {
+            return '';
+        }
+
+        $normalized = preg_replace('/[^a-z0-9]+/', '', $value);
+        return is_string($normalized) ? $normalized : '';
     }
 
     private function fetchRosterPayload(string $leagueKey): array
