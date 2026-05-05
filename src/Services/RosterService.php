@@ -504,15 +504,56 @@ class RosterService
 
     private function fetchRosterPayload(string $leagueKey): array
     {
-        $today = date('Y-m-d');
+        // For past seasons use a date near the end of the regular season so Yahoo
+        // returns the end-of-season roster state rather than the week-1 snapshot.
+        // For the current/future season use today so offseason adds/drops are visible.
+        $date = $this->rosterDateForLeagueKey($leagueKey);
 
-        // Prefer as-of-date roster to include offseason adds/drops.
         try {
-            return $this->api->get("league/{$leagueKey}/teams/roster;date={$today}/players");
+            return $this->api->get("league/{$leagueKey}/teams/roster;date={$date}/players");
         } catch (Throwable $e) {
-            // Fallback to default roster endpoint for leagues that reject date-scoped calls.
+            // Fallback for leagues that reject date-scoped calls.
             return $this->api->get("league/{$leagueKey}/teams/roster/players");
         }
+    }
+
+    /**
+     * Return the best roster-as-of date for a given league key.
+     *
+     * The league key encodes the game id, e.g. "449.l.28841". The game id maps
+     * roughly to an NFL season year. For completed seasons we use January 1 of
+     * the following year (after the regular season ends in early January), which
+     * is the latest date Yahoo will accept for that season's league. For the
+     * current or future season we use today.
+     */
+    private function rosterDateForLeagueKey(string $leagueKey): string
+    {
+        // NFL game_key → season year mapping (add new entries each season).
+        static $gameKeyToSeason = [
+            '390' => 2018,
+            '399' => 2019,
+            '406' => 2020,
+            '414' => 2021,
+            '423' => 2022,
+            '431' => 2023,
+            '449' => 2024,
+            '458' => 2025,
+        ];
+
+        $parts = explode('.', $leagueKey, 2);
+        $gameId = $parts[0] ?? '';
+        $season = $gameKeyToSeason[$gameId] ?? null;
+
+        $currentYear = (int) date('Y');
+
+        // If we recognise the game key and it's a completed season, use
+        // Jan 10 of the following year (well after the regular season ends,
+        // before the next season's league renews).
+        if ($season !== null && $season < $currentYear) {
+            return ($season + 1) . '-01-10';
+        }
+
+        return date('Y-m-d');
     }
 
     private function parseTeam(array $teamData): ?array
