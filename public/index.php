@@ -171,11 +171,20 @@ try {
             $oauth = new YahooOAuthClient($config['yahoo']);
             $apiClient = new YahooApiClient($oauth);
             $rosterService = new RosterService($apiClient, $config['yahoo']['league_key']);
-            $overview = $rosterService->getRosterOverview();
+            $seasonYear = (int) ($_GET['season'] ?? 0);
+            if ($seasonYear < 2018 || $seasonYear > 2100) {
+                $seasonYear = 0;
+            }
+
+            $overview = $rosterService->getRosterOverview($seasonYear > 0 ? $seasonYear : null);
             $render('rosters', [
                 'title'   => 'Rosters',
                 'teams'   => $overview['teams'],
                 'league'  => $overview['league'],
+                'availableSeasons' => is_array($overview['league']['available_seasons'] ?? null)
+                    ? $overview['league']['available_seasons']
+                    : [],
+                'selectedSeason' => (int) ($overview['league']['selected_season'] ?? 0),
             ]);
             break;
 

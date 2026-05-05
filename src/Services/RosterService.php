@@ -60,7 +60,8 @@ class RosterService
      */
     public function getAllRosters(): array
     {
-        $resolvedKey = $this->resolveLatestLeagueKey($this->leagueKey);
+        $selection = $this->resolveLeagueSelection(null);
+        $resolvedKey = (string) ($selection['league_key'] ?? $this->leagueKey);
         $raw = $this->fetchRosterPayload($resolvedKey);
 
         return $this->parseRosters($raw);
@@ -71,12 +72,15 @@ class RosterService
      *
      * @return array{teams: array<int, array<string, mixed>>, league: array<string, mixed>}
      */
-    public function getRosterOverview(): array
+    public function getRosterOverview(?int $season = null): array
     {
-        // Walk the renew chain forward so we start from the most recent league.
-        // This avoids crashes when the configured key belongs to an old season
-        // whose roster endpoint Yahoo no longer serves.
-        $resolvedKey = $this->resolveLatestLeagueKey($this->leagueKey);
+        $selection = $this->resolveLeagueSelection($season);
+        $resolvedKey = (string) ($selection['league_key'] ?? $this->leagueKey);
+        $requestedSeason = (int) ($selection['requested_season'] ?? 0);
+        $selectedSeason = (int) ($selection['selected_season'] ?? 0);
+        $availableSeasons = is_array($selection['available_seasons'] ?? null)
+            ? $selection['available_seasons']
+            : [];
 
         $raw = $this->fetchRosterPayload($resolvedKey);
         $leagueMeta = $this->parseLeagueMeta($raw);
@@ -116,6 +120,9 @@ class RosterService
                 'fallback_league_key'  => (string) ($usedFallbackLeagueKey ?? ''),
                 'configured_league_key'=> $this->leagueKey,
                 'configured_season'    => (string) ($leagueMeta['season'] ?? ''),
+                'selected_season'      => $selectedSeason,
+                'requested_season'     => $requestedSeason,
+                'available_seasons'    => $availableSeasons,
             ],
         ];
     }
@@ -245,25 +252,94 @@ class RosterService
     }
 
     /**
-     * Walk the Yahoo league renew chain forward from $leagueKey, returning the
-     * best available league key for rosters.
-     *
-     * Strategy:
-     * 1) Follow renew chain from configured key.
-     * 2) If that looks stale, augment with user's NFL league list.
-     * 3) Prefer newest season that returns non-empty rosters.
-     *
-     * Falls back to the configured key if no candidate succeeds.
+     * @return array{league_key: string, requested_season: int, selected_season: int, available_seasons: int[]}
      */
-    private function resolveLatestLeagueKey(string $leagueKey): string
+    private function resolveLeagueSelection(?int $requestedSeason): array
     {
-        $candidates = [];
+        $seasonKeys = $this->buildSeasonLeagueKeys();
+        $availableSeasons = array_keys($seasonKeys);
+        rsort($availableSeasons, SORT_NUMERIC);
+
+        $requestedSeason = $requestedSeason !== null ? (int) $requestedSeason : 0;
+
+        if ($availableSeasons === []) {
+            return [
+                'league_key' => $this->leagueKey,
+                'requested_season' => $requestedSeason,
+                'selected_season' => 0,
+                'available_seasons' => [],
+            ];
+        }
+
+        if ($requestedSeason > 0 && isset($seasonKeys[$requestedSeason])) {
+            $selectedSeason = $requestedSeason;
+            $keys = $seasonKeys[$requestedSeason];
+
+            foreach ($keys as $candidateKey) {
+                try {
+                    $raw = $this->fetchRosterPayload($candidateKey);
+                    $teams = $this->parseRosters($raw);
+                    if (!$this->areAllTeamsEmpty($teams)) {
+                        return [
+                            'league_key' => $candidateKey,
+                            'requested_season' => $requestedSeason,
+                            'selected_season' => $selectedSeason,
+                            'available_seasons' => $availableSeasons,
+                        ];
+                    }
+                } catch (Throwable $e) {
+                    continue;
+                }
+            }
+
+            return [
+                'league_key' => $keys[0],
+                'requested_season' => $requestedSeason,
+                'selected_season' => $selectedSeason,
+                'available_seasons' => $availableSeasons,
+            ];
+        }
+
+        foreach ($availableSeasons as $season) {
+            foreach ($seasonKeys[$season] as $candidateKey) {
+                try {
+                    $raw = $this->fetchRosterPayload($candidateKey);
+                    $teams = $this->parseRosters($raw);
+                    if (!$this->areAllTeamsEmpty($teams)) {
+                        return [
+                            'league_key' => $candidateKey,
+                            'requested_season' => $requestedSeason,
+                            'selected_season' => $season,
+                            'available_seasons' => $availableSeasons,
+                        ];
+                    }
+                } catch (Throwable $e) {
+                    continue;
+                }
+            }
+        }
+
+        $latestSeason = (int) $availableSeasons[0];
+        return [
+            'league_key' => $seasonKeys[$latestSeason][0],
+            'requested_season' => $requestedSeason,
+            'selected_season' => $latestSeason,
+            'available_seasons' => $availableSeasons,
+        ];
+    }
+
+    /**
+     * @return array<int, array<int, string>>
+     */
+    private function buildSeasonLeagueKeys(): array
+    {
+        $seasonKeys = [];
         $seen = [];
-        $key = $leagueKey;
+        $key = $this->leagueKey;
         $maxHops = 8;
         $configuredName = '';
 
-        // 1) Follow renew chain from configured key.
+        // Follow renew chain from configured key.
         for ($i = 0; $i < $maxHops; $i++) {
             if ($key === '' || isset($seen[$key])) {
                 break;
@@ -280,7 +356,9 @@ class RosterService
                     $configuredName = $name;
                 }
 
-                $candidates[$key] = max((int) ($candidates[$key] ?? 0), $season);
+                if ($season >= 2018) {
+                    $this->addSeasonLeagueKey($seasonKeys, $season, $key);
+                }
 
                 $renewValue = (string) ($leagueMeta['renew'] ?? '');
                 $renewed = $this->buildRenewedLeagueKey($renewValue);
@@ -293,67 +371,54 @@ class RosterService
             }
         }
 
-        // 2) If renew chain appears stale, augment with the user's NFL league list.
-        $newestKnownSeason = 0;
-        foreach ($candidates as $candidateSeason) {
-            $newestKnownSeason = max($newestKnownSeason, (int) $candidateSeason);
-        }
+        // Augment with leagues from the user's NFL league list.
+        $nameNeedle = $this->normalizeName($configuredName);
+        $userLeagues = $this->collectUserNflLeagues();
 
-        if ($newestKnownSeason <= ((int) date('Y') - 1)) {
-            $nameNeedle = $this->normalizeName($configuredName);
-            $userLeagues = $this->collectUserNflLeagues();
+        foreach ($userLeagues as $league) {
+            $candidateKey = (string) ($league['league_key'] ?? '');
+            $candidateSeason = (int) ($league['season'] ?? 0);
+            $candidateName = $this->normalizeName((string) ($league['name'] ?? ''));
 
-            foreach ($userLeagues as $league) {
-                $candidateKey = (string) ($league['league_key'] ?? '');
-                $candidateSeason = (int) ($league['season'] ?? 0);
-                $candidateName = $this->normalizeName((string) ($league['name'] ?? ''));
-
-                if ($candidateKey === '' || $candidateSeason <= 0) {
-                    continue;
-                }
-
-                if ($nameNeedle !== '') {
-                    $matchesName = $candidateName !== ''
-                        && (
-                            strpos($candidateName, $nameNeedle) !== false
-                            || strpos($nameNeedle, $candidateName) !== false
-                        );
-
-                    if (!$matchesName) {
-                        continue;
-                    }
-                }
-
-                $candidates[$candidateKey] = max((int) ($candidates[$candidateKey] ?? 0), $candidateSeason);
-            }
-        }
-
-        if ($candidates === []) {
-            return $leagueKey;
-        }
-
-        // 3) Prefer newest season that actually returns non-empty rosters.
-        arsort($candidates, SORT_NUMERIC);
-        $fallbackSuccessful = null;
-
-        foreach (array_keys($candidates) as $candidateKey) {
-            try {
-                $raw = $this->fetchRosterPayload($candidateKey);
-                $teams = $this->parseRosters($raw);
-
-                if (!$this->areAllTeamsEmpty($teams)) {
-                    return $candidateKey;
-                }
-
-                if ($fallbackSuccessful === null) {
-                    $fallbackSuccessful = $candidateKey;
-                }
-            } catch (Throwable $e) {
+            if ($candidateKey === '' || $candidateSeason < 2018) {
                 continue;
             }
+
+            if ($nameNeedle !== '') {
+                $matchesName = $candidateName !== ''
+                    && (
+                        strpos($candidateName, $nameNeedle) !== false
+                        || strpos($nameNeedle, $candidateName) !== false
+                    );
+
+                if (!$matchesName) {
+                    continue;
+                }
+            }
+
+            $this->addSeasonLeagueKey($seasonKeys, $candidateSeason, $candidateKey);
         }
 
-        return $fallbackSuccessful ?? $leagueKey;
+        ksort($seasonKeys, SORT_NUMERIC);
+        return $seasonKeys;
+    }
+
+    /**
+     * @param array<int, array<int, string>> $seasonKeys
+     */
+    private function addSeasonLeagueKey(array &$seasonKeys, int $season, string $leagueKey): void
+    {
+        if ($season <= 0 || $leagueKey === '') {
+            return;
+        }
+
+        if (!isset($seasonKeys[$season])) {
+            $seasonKeys[$season] = [];
+        }
+
+        if (!in_array($leagueKey, $seasonKeys[$season], true)) {
+            $seasonKeys[$season][] = $leagueKey;
+        }
     }
 
     /**

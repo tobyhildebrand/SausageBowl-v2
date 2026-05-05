@@ -1,3 +1,11 @@
+<?php
+$availableSeasons = is_array($availableSeasons ?? null) ? $availableSeasons : [];
+$selectedSeason = (int) ($selectedSeason ?? ($league['selected_season'] ?? 0));
+if ($availableSeasons !== []) {
+    rsort($availableSeasons, SORT_NUMERIC);
+}
+?>
+
 <section class="page-header">
     <div class="page-header__row">
         <h1>League Rosters</h1>
@@ -5,10 +13,32 @@
             $statusLabel = strtoupper((string)($league['draft_status'] ?? 'unknown'));
             $statusClass = strtolower((string)($league['draft_status'] ?? 'unknown'));
         ?>
+        <?php if ($selectedSeason > 0): ?>
+            <span class="league-status-badge">Season: <?= (int) $selectedSeason ?></span>
+        <?php endif; ?>
         <?php if ($statusLabel === 'PREDRAFT'): ?>
             <span class="league-status-badge league-status-badge--predraft">Pre-Draft</span>
         <?php endif; ?>
     </div>
+
+    <?php if ($availableSeasons !== []): ?>
+        <form method="get" action="/index.php" class="draft-inline-form">
+            <input type="hidden" name="r" value="rosters">
+            <label class="auth-field">
+                <span class="auth-field__label">Season</span>
+                <select class="auth-field__input" name="season">
+                    <?php foreach ($availableSeasons as $season): ?>
+                        <option value="<?= (int) $season ?>"<?= $selectedSeason === (int) $season ? ' selected' : '' ?>>
+                            <?= (int) $season ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <div class="auth-actions">
+                <button type="submit" class="btn btn--secondary">Show Season</button>
+            </div>
+        </form>
+    <?php endif; ?>
 </section>
 
 <?php
